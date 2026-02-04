@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Mac OS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+
+# Project Specific
+nginx/logs/
+waf/model/weights/
+*.log
+dataset.txt
+dataset_synthetic.txt
+access.log
+error.log
