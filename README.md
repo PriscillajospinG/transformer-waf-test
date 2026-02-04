@@ -13,18 +13,23 @@ The system is designed as a **Plug-and-Play** solution using Nginx as a reverse 
 - **📦 Dockerized**: simple `docker-compose up` deployment.
 
 ## 🏗️ Architecture
-```mermaid
-graph LR
-    User[User / Attacker] -->|HTTP Request| Nginx[Nginx Reverse Proxy]
-    Nginx -->|Check Request| WAF[WAF Service (FastAPI)]
-    WAF -- Tokenize & Predict --> Model[Transformer Model]
-    Model -->|Score| WAF
-    WAF -->|Allow (200) / Block (403)| Nginx
-    
-    subgraph "Decision"
-    Nginx -->|If Allowed| App[Protected App (Juice Shop)]
-    Nginx -->|If Blocked| Block[403 Forbidden Page]
-    end
+```
+[User/Attacker] 
+      |
+      v
+[Nginx Reverse Proxy] --(Check Request)--> [WAF Service]
+      |                                       |
+      |                                 (Tokenize & Predict)
+      |                                       v
+      |                                 [Transformer Model]
+      |                                       |
+      |                                    (Score)
+      |                                       |
+      | <----(Allow 200 / Block 403)----------+
+      |
+      +---[Allowed]---> [Juice Shop App]
+      |
+      +---[Blocked]---> [403 Forbidden Page]
 ```
 
 ## 🛠️ Installation & Setup
