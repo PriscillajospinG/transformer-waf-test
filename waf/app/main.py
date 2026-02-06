@@ -24,9 +24,9 @@ device = torch.device("cpu")
 def load_artifacts():
     global model, tokenizer
     try:
-        # Paths are relative to WORKDIR /app in Docker
-        TOKENIZER_PATH = "waf/model/weights/tokenizer.json"
-        MODEL_PATH = "waf/model/weights/waf_model.pth"
+        # Paths are absolute in Docker
+        TOKENIZER_PATH = "/app/model/weights/tokenizer.json"
+        MODEL_PATH = "/app/model/weights/waf_model.pth"
         
         logger.info(f"Loading SecureBERT tokenizer...")
         tokenizer = HttpTokenizer()
