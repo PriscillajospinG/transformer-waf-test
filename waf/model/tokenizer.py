@@ -1,36 +1,38 @@
-from tokenizers import Tokenizer
-from tokenizers.models import BPE, WordLevel
-from tokenizers.trainers import BpeTrainer, WordLevelTrainer
-from tokenizers.pre_tokenizers import Whitespace
+from transformers import AutoTokenizer
 import os
 
 class HttpTokenizer:
-    def __init__(self, vocab_size=30000, model_type="bpe"):
-        self.vocab_size = vocab_size
-        self.model_type = model_type
-        self.tokenizer = None
-        
-        if model_type == "bpe":
-            self.tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-            self.trainer = BpeTrainer(special_tokens=["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"], vocab_size=vocab_size)
-        else:
-            self.tokenizer = Tokenizer(WordLevel(unk_token="[UNK]"))
-            self.trainer = WordLevelTrainer(special_tokens=["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"], vocab_size=vocab_size)
-            
-        self.tokenizer.pre_tokenizer = Whitespace()
-
-    def train(self, files):
-        """Trains the tokenizer on a list of files containing normalized requests."""
-        self.tokenizer.train(files, self.trainer)
-
-    def save(self, path):
-        self.tokenizer.save(path)
-
-    def load(self, path):
-        self.tokenizer = Tokenizer.from_file(path)
+    def __init__(self, max_len=128):
+        self.model_name = "JackTech/SecureBERT"
+        self.max_len = max_len
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
     def encode(self, text):
-        return self.tokenizer.encode(text)
+        """
+        Encodes text into a dictionary of tensors: {'input_ids': ..., 'attention_mask': ...}
+        """
+        return self.tokenizer(
+            text,
+            max_length=self.max_len,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt"
+        )
+    
+    # We keep these for compatibility but they are largely unused now
+    def train(self, files):
+        pass
 
-    def decode(self, ids):
-        return self.tokenizer.decode(ids)
+    def save(self, path):
+        # Saving just means saving the pretrained config usually, 
+        # but AutoTokenizer is loaded by name mostly.
+        # We can save to local dir.
+        self.tokenizer.save_pretrained(os.path.dirname(path))
+
+    def load(self, path):
+        # We can load from local dir if saved there
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(os.path.dirname(path))
+        except:
+            # Fallback to web
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
