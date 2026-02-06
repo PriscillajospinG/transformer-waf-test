@@ -5,9 +5,8 @@ from transformers import AutoModel, AutoConfig
 class WAFTransformer(nn.Module):
     def __init__(self, num_classes=2):
         super().__init__()
-        # Use a reputable SecureBERT model from Hugging Face
-        # JackTech/SecureBERT is a common choice for this domain
-        self.model_name = "JackTech/SecureBERT" 
+        # Using bert-base-uncased as a reliable baseline
+        self.model_name = "bert-base-uncased" 
         
         print(f"Loading {self.model_name}...")
         self.bert = AutoModel.from_pretrained(self.model_name)

@@ -3,7 +3,7 @@ import os
 
 class HttpTokenizer:
     def __init__(self, max_len=128):
-        self.model_name = "JackTech/SecureBERT"
+        self.model_name = "bert-base-uncased"
         self.max_len = max_len
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
