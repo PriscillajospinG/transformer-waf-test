@@ -25,8 +25,8 @@ def load_artifacts():
     global model, tokenizer
     try:
         # Paths are relative to WORKDIR /app in Docker
-        TOKENIZER_PATH = "model/weights/tokenizer.json"
-        MODEL_PATH = "model/weights/waf_model.pth"
+        TOKENIZER_PATH = "waf/model/weights/tokenizer.json"
+        MODEL_PATH = "waf/model/weights/waf_model.pth"
         
         logger.info(f"Loading SecureBERT tokenizer...")
         tokenizer = HttpTokenizer()
