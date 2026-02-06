@@ -81,7 +81,7 @@ class WAFDataset(Dataset):
 # --- Training Loop ---
 def train_pipeline():
     print("1. Generating Synthetic Data...")
-    texts, labels = generate_synthetic_data(4000)
+    texts, labels = generate_synthetic_data(1000)
     
     print("2. Initializing Tokenizer (SecureBERT)...")
     tokenizer = HttpTokenizer()
@@ -105,7 +105,7 @@ def train_pipeline():
     # Optimize entire model
     optimizer = optim.AdamW(model.parameters(), lr=2e-5) 
     
-    num_epochs = 3 
+    num_epochs = 1 
     model.train()
     
     for epoch in range(num_epochs):
