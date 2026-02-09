@@ -1,99 +1,113 @@
 # Transformer-based Web Application Firewall (WAF)
 
-## 🚀 Overview
-This project implements a production-grade, **Transformer-based Web Application Firewall (WAF)** designed to protect web applications from zero-day attacks without relying on static rules. It uses a deep learning model to analyze HTTP requests in real-time and block malicious intent.
+![Status](https://img.shields.io/badge/Status-Operational-brightgreen)
+![Model](https://img.shields.io/badge/Model-SecureBERT%20(Finetuned)-blue)
+![Platform](https://img.shields.io/badge/Platform-Docker%20%7C%20Nginx%20%7C%20Python-orange)
 
-The system is designed as a **Plug-and-Play** solution using Nginx as a reverse proxy, making it easy to drop in front of any existing application. The target vulnerable application for this demo is **OWASP Juice Shop**.
+An intelligent, self-learning Web Application Firewall that uses **SecureBERT** (a Transformer model) to detect and block zero-day web attacks in real-time. Unlike traditional WAFs that rely on thousands of static regex rules, this system learns the *semantic meaning* of malicious payloads.
 
-## ✨ Features
-- **🤖 Deep Learning Core**: Uses a custom PyTorch Transformer Encoder trained on HTTP traffic.
-- **🛡️ Real-Time Protection**: Intercepts requests via Nginx `auth_request` and provides millisecond-latency decisions.
-- **🔄 Continuous Learning**: Includes a feedback loop mechanism (`online_learning.py`) to fix false positives on-the-fly without full retraining.
-- **🕵️ Pattern Recognition**: Detects SQL Injection, XSS, Path Traversal, and more based on semantic structure, not just keywords.
-- **📦 Dockerized**: simple `docker-compose up` deployment.
+## 🚀 Features
+- **AI-Powered Detection**: Uses a fine-tuned BERT model to classify HTTP requests.
+- **Real-Time Protection**: Blocks SQL Injection (SQLi), XSS, Path Traversal, and Command Injection in <50ms.
+- **Fail-Safe Architecture**: Designed to "fail open" if the AI service is unreachable, ensuring app availability.
+- **Plug-and-Play**: Runs as a Docker sidecar; no code changes required in your application.
 
 ## 🏗️ Architecture
+The system sits in front of your application as a reverse proxy.
+
 ```
-[User/Attacker] 
+[Attacker/User] 
       |
       v
-[Nginx Reverse Proxy] --(Check Request)--> [WAF Service]
-      |                                       |
-      |                                 (Tokenize & Predict)
-      |                                       v
-      |                                 [Transformer Model]
-      |                                       |
-      |                                    (Score)
-      |                                       |
-      | <----(Allow 200 / Block 403)----------+
+[Nginx Gateway] --(1. Check Request)--> [WAF Service (SecureBERT)]
+      |                                         |
+      |                                  (2. Analyze Token Sequence)
+      |                                         v
+      |                                  [Model Inference]
+      |                                         |
+      |                                  (3. Allow/Block Decision)
+      |                                         |
+      | <----(4. Return 200 or 403)-------------+
       |
-      +---[Allowed]---> [Juice Shop App]
+      +---[200 OK]---> [Your Application] (e.g., Juice Shop)
       |
-      +---[Blocked]---> [403 Forbidden Page]
+      +---[403 Forbidden]---> [Block Page]
 ```
 
-## 🛠️ Installation & Setup
+## 🛠️ Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose
-- Python 3.10+ (for running local scripts)
+- **Docker** and **Docker Compose** installed on your machine.
+- **Git** to clone the repository.
+- (Optional) **Python 3.10+** for running local scripts.
 
-### 1. Start the System
+### 1. Installation
+Clone the repository and navigate to the project folder:
+```bash
+git clone https://github.com/PriscillajospinG/transformer-waf-test.git
+cd transformer-waf-test
+```
+
+### 2. Start the System
+Launch the entire stack (WAF + Nginx + Vulnerable App) with one command:
 ```bash
 docker-compose up -d --build
 ```
-This starts:
-- **Juice Shop** (Target App) on port `3000` (internal)
-- **WAF Service** (ML Inference) on port `8000` (internal)
-- **Nginx** (Gateway) on port `8080` (public)
+*Note: The first run may take a few minutes to download the BERT model and build the containers.*
 
-### 2. Access the Application
-Visit **[http://localhost:8080](http://localhost:8080)** to use the protected application.
+### 3. Verification
+Once the containers are running (`docker ps`), verifying the protection is simple:
 
-## 🧪 Verification & Usage
-We provide scripts to verify the WAF's effectiveness.
-
-### Automatic Verification
-Run the verification suite to test benign and malicious payloads:
+**Run the Automated Test Suite:**
 ```bash
 python3 scripts/verify_waf.py
 ```
-*Expected Output: All tests passed.*
+*You should see `Passed: 6, Failed: 0` indicating that benign requests were allowed and attacks were blocked.*
 
-### Manual Testing
-**Benign Request (Allowed):**
+## 🧪 Manual Testing
+You can try attacking the system yourself!
+
+**1. Normal Access (Should work):**
 ```bash
 curl -I "http://localhost:8080/rest/products/search?q=apple"
-# HTTP/1.1 200 OK
+# Returns: HTTP/1.1 200 OK
 ```
 
-**Malicious Attack (Blocked):**
+**2. SQL Injection Attack (Should be blocked):**
 ```bash
 curl -I "http://localhost:8080/rest/products/search?q=' OR 1=1 --"
-# HTTP/1.1 403 Forbidden
+# Returns: HTTP/1.1 403 Forbidden
 ```
 
-## 🧠 Continuous Learning
-If the model creates a **False Positive** (blocks a valid request), you can "teach" it to accept that pattern instantly.
+**3. XSS Attack (Should be blocked):**
+```bash
+curl -I "http://localhost:8080/rest/products/search?q=<script>alert(1)</script>"
+# Returns: HTTP/1.1 403 Forbidden
+```
 
-1. **Identify the blocker**: e.g., searching for "apple" is blocked.
-2. **Run the Fix Script**:
+## 📂 Project Structure
+| Directory | Description |
+|-----------|-------------|
+| `waf/` | **Core Logic**. Contains the Python code for the AI Service, Model (`securebert`), and API. |
+| `nginx/` | **Gateway**. Nginx configuration that routes traffic and integrates the WAF. |
+| `scripts/` | **Tools**. Python scripts to generate traffic, train the model, and verify functionality. |
+| `docker-compose.yml` | **Orchestration**. Defines how the containers (App, WAF, Nginx) talk to each other. |
+
+## 🔧 continuous Learning
+If the model blocks a legitimate request (False Positive), you can "teach" it to correct itself without restarting the system.
+
+1. Identify the blocked request (e.g., `q=select`).
+2. Run the fix script:
    ```bash
    python3 scripts/fix_false_positive.py
    ```
-   *This script fine-tunes the model on the benign sample while replaying malicious samples to maintain boundaries, then restarts the WAF service.*
+   *This script fine-tunes the model on the new example and restarts the service automatically.*
 
-## 📂 Project Structure
-- `nginx/`: Nginx configuration and logs.
-- `waf/`: Source code for the WAF service.
-  - `app/`: FastAPI application.
-  - `model/`: PyTorch model definition.
-  - `train/`: Training pipelines (Offline & Online).
-  - `data/`: Tokenizers and normalizers.
-- `scripts/`: Utility scripts for traffic generation and verification.
+## 🤝 Contributing
+Feel free to fork this project and submit Pull Requests! We are looking for:
+- More diverse training datasets.
+- Support for other architectures (e.g., LSTM, CNN).
+- Dashboard for visualizing blocked attacks.
 
-## 🔧 Tech Stack
-- **Languages**: Python, Lua (Nginx integration)
-- **ML Framework**: PyTorch, HuggingFace Tokenizers
-- **API**: FastAPI, Uvicorn
-- **Infrastructure**: Docker, Nginx
+---
+**Disclaimer**: This project is for educational and defensive purposes only. Do not use the attack tools on servers you do not own.
