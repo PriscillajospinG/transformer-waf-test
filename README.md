@@ -177,6 +177,47 @@ curl -I "http://localhost:8080/rest/products/search?q=%27%20OR%201=1%20--"  # At
 docker-compose down
 ```
 
+## 🎯 Monitoring & Real-Time Dashboard
+
+Once the WAF is running, use these tools for monitoring and testing:
+
+### Real-Time Dashboard
+```bash
+python3 waf_dashboard.py
+```
+**Features:**
+- Live request analysis showing all 4 detection layers
+- Real-time confidence scores from BERT model
+- Detection decision breakdown
+- Performance metrics and latency monitoring
+
+### Real-Time Test Suite
+```bash
+python3 test_realtime.py
+```
+**Features:**
+- Interactive testing of benign and malicious requests
+- Shows detection process for each request
+- Logs from WAF service for each test
+
+### View Logs
+```bash
+# View WAF detection logs
+docker-compose logs -f waf-service
+
+# View Nginx access logs (shows all HTTP decisions)
+tail -f nginx/logs/access.log
+
+# View Nginx error logs
+tail -f nginx/logs/error.log
+```
+
+### Health Check
+```bash
+curl http://localhost:8000/health
+# Returns: {"status": "running", "zero_day_protection": "enabled", "threshold": 0.80}
+```
+
 ## 🧪 Manual Testing
 
 Try these requests while the system is running:
@@ -419,10 +460,33 @@ docker logs waf-service
 ls -la waf/model/weights/waf_model.pth
 ```
 
-### High false positive rate
-Run the fix script for each blocked benign request:
+### High false positive rate (blocking too many legitimate requests)
+1. **Increase the AI confidence threshold** in `waf/app/main.py`:
+```python
+AI_CONFIDENCE_THRESHOLD = 0.85  # More conservative (was 0.80)
+UNCERTAINTY_THRESHOLD = 0.75
+```
+
+2. **Restart the WAF service**:
 ```bash
-python3 scripts/fix_false_positive.py "GET /your/legitimate/request"
+docker-compose restart waf-service
+```
+
+3. **Test with dashboard**:
+```bash
+python3 waf_dashboard.py
+```
+
+### Missing legitimate attacks (false negatives)
+1. **Decrease the AI confidence threshold** in `waf/app/main.py`:
+```python
+AI_CONFIDENCE_THRESHOLD = 0.75  # More aggressive (was 0.80)
+UNCERTAINTY_THRESHOLD = 0.65
+```
+
+2. **Alternatively, use online learning**:
+```bash
+python3 scripts/fix_false_positive.py "GET /missed/attack?q=malicious"
 ```
 
 ### Port 8080 already in use
@@ -434,6 +498,11 @@ python3 scripts/fix_false_positive.py "GET /your/legitimate/request"
 docker-compose down
 docker-compose up -d --build
 ```
+
+### Accessing the application after starting
+- **WAF Gateway**: http://localhost:8080 (public access via Nginx)
+- **OWASP Juice Shop**: Accessible at http://localhost:8080 (behind WAF)
+- **WAF Health Check**: http://localhost:8000 (direct access, not through Nginx)
 
 ## 🤝 Contributing
 Feel free to fork this project and submit Pull Requests! We are looking for:
