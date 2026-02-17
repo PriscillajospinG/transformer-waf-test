@@ -1,0 +1,52 @@
+╔════════════════════════════════════════════════════════════════════╗
+║            🛡️  PLUG & PLAY WAF - 3 STEP DEPLOYMENT                ║
+╚════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1: Edit Configuration (Your Website Details)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+$ nano CONFIG.env
+
+Set these 3 lines:
+  TARGET_WEBSITE_URL=http://your-actual-website.com
+  PUBLIC_IP_OR_DOMAIN=your-domain.com
+  PUBLIC_PORT=8080
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2: Deploy With One Command
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+$ bash start_waf.sh
+
+(Sits back. All automatic:)
+  ✓ Downloads & builds Docker images (~2 min first time)
+  ✓ Starts Nginx, WAF API, Target website
+  ✓ Waits for health checks to pass
+  ✓ Starts background monitoring daemon
+  ✓ All logs recorded to waf_production.log
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3: Verify & Monitor
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Visit your website:
+  http://<your-domain>:8080
+
+Check live logs:
+  tail -f waf_production.log
+  tail -f nginx/logs/access.log | grep " 403 "
+
+Check services running:
+  docker-compose ps
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ DONE! Your website is now protected 24/7
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When done (optional):
+  bash stop_waf.sh
+
+For detailed info:
+  cat DEPLOYMENT.txt
+  cat README.md
