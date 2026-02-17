@@ -83,7 +83,7 @@ The WAF sits in front of your application as a reverse proxy, intercepting all H
    - Tokenizes the HTTP text using `HttpTokenizer`
    - Feeds tokens to the `WAFTransformer` model
    - Model outputs confidence scores for two classes: [benign, malicious]
-   - Applies decision threshold (default 0.5)
+   - Applies decision threshold (optimized: 0.95)
 5. WAF returns HTTP 200 (allow) or 403 (block)
 6. Nginx either forwards the request to Juice Shop or returns a 403 block page
 
