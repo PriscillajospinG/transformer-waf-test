@@ -23,9 +23,9 @@ tokenizer = None
 device = torch.device("cpu")
 
 # ===== ZERO-DAY DETECTION CONFIGURATION =====
-# Very high threshold to avoid false positives while catching clear attacks
-AI_CONFIDENCE_THRESHOLD = 0.95  # Very high: only block if extremely confident it's an attack
-UNCERTAINTY_THRESHOLD = 0.85    # If 0.85 < prob < 0.95, it's uncertain - flag it
+# Read from environment variables (set in CONFIG.env), with defaults
+AI_CONFIDENCE_THRESHOLD = float(os.getenv('AI_CONFIDENCE_THRESHOLD', '0.95'))
+UNCERTAINTY_THRESHOLD = float(os.getenv('UNCERTAINTY_THRESHOLD', '0.85'))
 MAX_ALLOWED_SPECIAL_CHARS = 10
 SUSPICIOUS_KEYWORDS = [
     'union', 'select', 'drop', 'insert', 'delete', 'update', 'exec', 'script',

@@ -1,10 +1,10 @@
 version: '3.8'
 
 services:
-  # The vulnerable application
-  juice-shop:
+  # The target application (configurable)
+  target-app:
     image: bkimminich/juice-shop
-    container_name: juice-shop
+    container_name: target-app
     restart: always
     environment:
       - NODE_ENV=safe
@@ -39,6 +39,10 @@ services:
     restart: always
     environment:
       - MODEL_PATH=/app/model/weights
+      - AI_CONFIDENCE_THRESHOLD=${AI_CONFIDENCE_THRESHOLD:-0.95}
+      - UNCERTAINTY_THRESHOLD=${UNCERTAINTY_THRESHOLD:-0.85}
+    env_file:
+      - CONFIG.env
     volumes:
       - ./waf:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -78,7 +82,7 @@ services:
     depends_on:
       waf-service:
         condition: service_healthy
-      juice-shop:
+      target-app:
         condition: service_healthy
     networks:
       - waf-net

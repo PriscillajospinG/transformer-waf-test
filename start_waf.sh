@@ -1,15 +1,37 @@
 #!/bin/bash
-# Start WAF in Production Mode
-# Run this to start the WAF system with all monitoring and auto-recovery
+# 🛡️ Start WAF in Production Mode
+# Configure, deploy, and protect any website
 
 set -e
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="$PROJECT_DIR/waf_production.log"
 PID_FILE="$PROJECT_DIR/.waf_pid"
+CONFIG_FILE="$PROJECT_DIR/CONFIG.env"
 
-echo "🛡️  WAF Production Startup" | tee -a "$LOG_FILE"
-echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting WAF in production mode..." | tee -a "$LOG_FILE"
+# Load configuration
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "❌ CONFIG.env not found! Please create it first."
+    echo "   See CONFIG.env.example for template"
+    exit 1
+fi
+
+# Source configuration
+source "$CONFIG_FILE"
+
+echo "🛡️  WAF Production Deployment" | tee -a "$LOG_FILE"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting WAF for: $TARGET_WEBSITE_URL" | tee -a "$LOG_FILE"
+
+# Validate configuration
+if [ -z "$TARGET_WEBSITE_URL" ]; then
+    echo "❌ TARGET_WEBSITE_URL not set in CONFIG.env" | tee -a "$LOG_FILE"
+    exit 1
+fi
+
+echo "⚙️  Configuration:" | tee -a "$LOG_FILE"
+echo "   Website: $TARGET_WEBSITE_URL" | tee -a "$LOG_FILE"
+echo "   Public Domain: $PUBLIC_IP_OR_DOMAIN:$PUBLIC_PORT" | tee -a "$LOG_FILE"
+echo "   AI Threshold: $AI_CONFIDENCE_THRESHOLD" | tee -a "$LOG_FILE"
 
 # Check prerequisites
 if ! command -v docker &> /dev/null; then
@@ -68,27 +90,27 @@ fi
 # Display status
 echo "" | tee -a "$LOG_FILE"
 echo "════════════════════════════════════════════════════" | tee -a "$LOG_FILE"
-echo "✅ WAF PRODUCTION MODE STARTED" | tee -a "$LOG_FILE"
+echo "✅ WAF DEPLOYED SUCCESSFULLY" | tee -a "$LOG_FILE"
 echo "════════════════════════════════════════════════════" | tee -a "$LOG_FILE"
 echo "" | tee -a "$LOG_FILE"
-echo "Services are running and configured for auto-restart:" | tee -a "$LOG_FILE"
-echo "  🌐 Website: http://localhost:8080" | tee -a "$LOG_FILE"
-echo "  🔍 WAF API: http://localhost:8000" | tee -a "$LOG_FILE"
-echo "  📊 Logs: docker-compose logs -f waf-service" | tee -a "$LOG_FILE"
+echo "📊 Deployment Details:" | tee -a "$LOG_FILE"
+echo "  Target Website: $TARGET_WEBSITE_URL" | tee -a "$LOG_FILE"
+echo "  Public Access: http://$PUBLIC_IP_OR_DOMAIN:$PUBLIC_PORT" | tee -a "$LOG_FILE"
+echo "  WAF API: http://localhost:8000 (internal)" | tee -a "$LOG_FILE"
 echo "" | tee -a "$LOG_FILE"
-echo "Monitoring:" | tee -a "$LOG_FILE"
-echo "  Real-time detection: python3 waf_dashboard.py" | tee -a "$LOG_FILE"
-echo "  System status: docker-compose ps" | tee -a "$LOG_FILE"
-echo "  Service logs: tail -f waf_production.log" | tee -a "$LOG_FILE"
+echo "🔒 Protection Status:" | tee -a "$LOG_FILE"
+echo "  ✅ All services running" | tee -a "$LOG_FILE"
+echo "  ✅ Auto-restart enabled" | tee -a "$LOG_FILE"
+echo "  ✅ Health checks active (10s interval)" | tee -a "$LOG_FILE"
+echo "  ✅ Real-time attack detection active" | tee -a "$LOG_FILE"
 echo "" | tee -a "$LOG_FILE"
-echo "⚙️  Auto-features enabled:" | tee -a "$LOG_FILE"
-echo "  ✓ Auto-restart on crash (always policy)" | tee -a "$LOG_FILE"
-echo "  ✓ Health checks every 10 seconds" | tee -a "$LOG_FILE"
-echo "  ✓ Resource limits to prevent memory leaks" | tee -a "$LOG_FILE"
-echo "  ✓ Log rotation (max 50MB per service)" | tee -a "$LOG_FILE"
+echo "📈 Monitoring:" | tee -a "$LOG_FILE"
+echo "  View logs: tail -f waf_production.log" | tee -a "$LOG_FILE"
+echo "  Check status: docker-compose ps" | tee -a "$LOG_FILE"
+echo "  View attacks: tail -f nginx/logs/access.log | grep ' 403 '" | tee -a "$LOG_FILE"
 echo "" | tee -a "$LOG_FILE"
-echo "To stop: bash stop_waf.sh" | tee -a "$LOG_FILE"
-echo "To monitor: bash monitor_waf.sh" | tee -a "$LOG_FILE"
+echo "🛑 To Stop:" | tee -a "$LOG_FILE"
+echo "  bash stop_waf.sh" | tee -a "$LOG_FILE"
 echo "" | tee -a "$LOG_FILE"
 
 # Start monitoring daemon in background
@@ -100,4 +122,4 @@ if [ -f "$PROJECT_DIR/monitor_waf.sh" ]; then
     echo "   Monitor PID: $MONITOR_PID" | tee -a "$LOG_FILE"
 fi
 
-echo "$(date '+%Y-%m-%d %H:%M:%S') - WAF is LIVE and protecting your assets!" | tee -a "$LOG_FILE"
+echo "$(date '+%Y-%m-%d %H:%M:%S') - WAF is LIVE and protecting your website!" | tee -a "$LOG_FILE"
