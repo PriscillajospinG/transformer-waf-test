@@ -3,11 +3,12 @@ version: '3.8'
 services:
   # The target application (configurable)
   target-app:
-    image: bkimminich/juice-shop
+    image: bkimminich/juice-shop:latest
     container_name: target-app
     restart: always
     environment:
       - NODE_ENV=safe
+      - PORT=3000
     networks:
       - waf-net
     deploy:
@@ -39,25 +40,42 @@ services:
     restart: always
     environment:
       - MODEL_PATH=/app/model/weights
-      - AI_CONFIDENCE_THRESHOLD=${AI_CONFIDENCE_THRESHOLD:-0.95}
-      - UNCERTAINTY_THRESHOLD=${UNCERTAINTY_THRESHOLD:-0.85}
+      - TARGET_WEBSITE_URL=http://target-app:3000
+      - LOG_LEVEL=INFO
+      - AI_CONFIDENCE_THRESHOLD=0.95
+      - UNCERTAINTY_THRESHOLD=0.85
+      - RULE_ENGINE_THRESHOLD=0.70
+      - ANOMALY_THRESHOLD=0.75
+      - COMBINED_THRESHOLD=0.85
+      - RL_ENABLED=true
+      - RL_EPSILON=0.1
+      - RL_ALPHA=0.1
+      - RL_GAMMA=0.9
+      - ANOMALY_ENABLED=true
+      - ANOMALY_EMBEDDING_CACHE_SIZE=1000
+      - BLOCK_ON_ANOMALY=true
+      - BLOCK_ON_UNCERTAIN=false
+      - LOG_ALLOWED_REQUESTS=true
     env_file:
       - CONFIG.env
     volumes:
       - ./waf:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - ./waf/logs:/app/logs
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     networks:
       - waf-net
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1024M
+          cpus: '1.5'
+          memory: 2048M
         reservations:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '0.75'
+          memory: 1024M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -67,7 +85,6 @@ services:
       options:
         max-size: "50m"
         max-file: "10"
-        labels: "component=waf-service"
 
   # Nginx Reverse Proxy
   nginx:
@@ -95,9 +112,19 @@ services:
           cpus: '0.25'
           memory: 128M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 10s
       timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  waf-net:
+    driver: bridge
       retries: 3
       start_period: 15s
     logging:

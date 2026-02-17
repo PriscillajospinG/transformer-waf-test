@@ -9,7 +9,6 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
-import lock
 
 DB_PATH = "/app/data/waf.db"
 _db_lock = threading.Lock()
