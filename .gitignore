@@ -1,29 +1,196 @@
-# Python
+# ============================================
+# 🛡️ SecureBERT WAF - Git Ignore Rules
+# ============================================
+
+# ===== PYTHON =====
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ===== VIRTUAL ENVIRONMENTS =====
 env/
 venv/
-.env
+ENV/
+env.bak/
+venv.bak/
+.venv
 .venv/
 
-# Jupyter
-.ipynb_checkpoints
-
-# Mac OS
-.DS_Store
-
-# IDEs
-.idea/
+# ===== IDE & EDITORS =====
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.atom/
+.vim/
 
-# Project Specific
-nginx/logs/
-waf/model/weights/
+# ===== OS SPECIFIC =====
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# ===== JUPYTER & NOTEBOOKS =====
+.ipynb_checkpoints
+*.ipynb
+.jupyter
+
+# ===== LOGGING & DATABASES =====
 *.log
+*.log.*
+logs/
+nginx/logs/
+waf/logs/
+waf/data/
+*.db
+*.sqlite
+*.sqlite3
+waf.db
+waf_test.db
+
+# ===== WAF SPECIFIC =====
+waf/model/weights/
+waf/data/training_data.json
 dataset.txt
 dataset_synthetic.txt
 access.log
 error.log
+*.waf.log
+
+# ===== TEMPORARY FILES =====
+*.tmp
+*.temp
+*.bak
+*.backup
+.cache/
+*.cache
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.local
+.env.*.local
+CONFIG.env.local
+config.local.env
+secrets/
+*.pem
+*.key
+*.cert
+*.csr
+
+# ===== DOCKER =====
+docker-compose.override.yml
+.dockerignore
+docker-build/
+
+# ===== TEST & COVERAGE =====
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+junit.xml
+coverage.xml
+*.cover
+
+# ===== NODE (if using npm for frontend) =====
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ===== PIP & PACKAGE MANAGERS =====
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ===== VS CODE SPECIFIC =====
+.vscode-test
+.vscode/*.log
+extensions/
+
+# ===== MACOS BUNDLE FILES =====
+*.dmg
+*.app
+
+# ===== TEMPORARY SCRIPTS & TEST FILES =====
+test_*.py
+temp_*.py
+debug_*.py
+waf_test.py
+test_realtime.py
+waf_dashboard.py
+
+# ===== MODEL ARTIFACTS =====
+*.pth
+*.pt
+*.bin
+*.onnx
+checkpoints/
+models/
+model_cache/
+huggingface_cache/
+
+# ===== DATABASE BACKUPS =====
+*.db-journal
+*.sqlite-journal
+
+# ===== PYTHON PROFILING =====
+.prof
+prof_output.txt
+profile.stats
+
+# ===== AI/ML SPECIFIC =====
+wandb/
+mlruns/
+outputs/
+multirun/
+.hydra/
+
+# ===== MONITORING & METRICS =====
+prometheus_data/
+grafana_data/
+metrics.json
+stats.json
+
+# ===== CUSTOM IGNORE ENTRIES =====
+# Add your own project-specific ignores below:
+# Example: sensitive_data/
+# Example: *.private
+waf/data/
+waf/config/secret_config.yaml
