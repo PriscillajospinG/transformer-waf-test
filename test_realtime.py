@@ -7,10 +7,12 @@ Monitor detection in action as requests are made
 import requests
 import subprocess
 import time
+import os
 from threading import Thread
 import sys
 
 BASE_URL = "http://localhost:8080"
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # Test cases: (description, path, expected_status)
 TESTS = [
@@ -31,7 +33,7 @@ def get_waf_logs():
             ["docker-compose", "logs", "waf-service", "--tail=5"],
             capture_output=True,
             text=True,
-            cwd="/Users/priscillajosping/Desktop/Mini Project/transformer-waf-test"
+            cwd=PROJECT_ROOT
         )
         return result.stdout
     except:

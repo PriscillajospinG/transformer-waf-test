@@ -8,9 +8,11 @@ import requests
 import subprocess
 import time
 import json
+import os
 from datetime import datetime
 
 BASE_URL = "http://localhost:8080"
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 def get_waf_logs(last_n=20):
     """Fetch recent WAF logs"""
@@ -19,7 +21,7 @@ def get_waf_logs(last_n=20):
             ["docker-compose", "logs", "waf-service", f"--tail={last_n}"],
             capture_output=True,
             text=True,
-            cwd="/Users/priscillajosping/Desktop/Mini Project/transformer-waf-test"
+            cwd=PROJECT_ROOT
         )
         return result.stdout
     except:

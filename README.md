@@ -126,7 +126,46 @@ The WAF doesn't rely on AI alone. Instead, it uses a multi-layered approach to c
 - **Git** to clone the repository
 - **~4GB free disk space** for Docker images and model weights
 
-### Quick Start (4 steps)
+### 🚀 Quick Start - Production Mode (Always Running)
+
+For **24/7 protection with auto-restart**, use the production startup script:
+
+```bash
+# 1. Clone & Navigate
+git clone https://github.com/PriscillajospinG/transformer-waf-test.git
+cd transformer-waf-test
+
+# 2. Start WAF in production mode (one command!)
+bash start_waf.sh
+
+# That's it! System is now:
+# ✓ Always running with auto-restart enabled
+# ✓ Health checked every 10 seconds  
+# ✓ Monitored in background daemon
+# ✓ Protecting assets 24/7
+# ✓ All activity logged to waf_production.log
+```
+
+**What happens automatically:**
+- Builds Docker images
+- Starts Nginx, WAF, and Juice Shop
+- Waits for health checks
+- Starts background monitoring daemon
+- Auto-recovers from any crashes
+- Rotates logs to prevent disk fill
+
+**To stop:**
+```bash
+bash stop_waf.sh
+```
+
+**📖 Full Production Guide:** See [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)
+
+---
+
+### Manual Start (Development)
+
+Alternatively, run manually for testing:
 
 #### Step 1: Clone & Navigate
 ```bash
@@ -134,7 +173,7 @@ git clone https://github.com/PriscillajospinG/transformer-waf-test.git
 cd transformer-waf-test
 ```
 
-#### Step 2: Start the System
+#### Step 2: Start the System (Manual)
 ```bash
 docker-compose up -d --build
 ```
