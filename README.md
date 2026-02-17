@@ -1,236 +1,341 @@
-# 🛡️ AI-Powered Web Application Firewall (WAF)
+# 🛡️ SecureBERT WAF - Plug-and-Play Web Application Firewall
 
-**One-Click Deployment. Real-Time Attack Detection. Zero Configuration Required.**
+**Enterprise-grade AI-powered Web Application Firewall with Real-time Attack Detection, Reinforcement Learning, and Zero-Day Protection**
 
-Enterprise-grade AI-powered WAF using SecureBERT Transformer model. Detects and blocks SQL Injection, XSS, path traversal, command injection, and 85%+ of zero-day attack variants.
+## 📋 Overview
 
----
+SecureBERT WAF is a production-ready, plug-and-play Web Application Firewall that uses:
 
-## ⚡ Quick Deploy (2 Minutes)
+- **SecureBERT**: BERT-based transformer model for attack detection (85%+ zero-day accuracy)
+- **Multi-Layer Detection**: Rule engine + ML + anomaly detection + uncertainty scoring
+- **Reinforcement Learning**: Q-learning feedback loop to improve policy from admin guidance  
+- **Zero-Day Protection**: Embedding-based anomaly detection for unknown attacks
+- **Reverse Proxy**: Complete HTTP reverse proxy with request forwarding
+- **Admin API**: Full REST API for logs, feedback, and configuration
+- **Dashboard**: Real-time monitoring UI
 
-### 1. Configure Your Website
+## 🚀 Quick Start (3 Steps)
 
-Edit `CONFIG.env`:
+### 1. Clone and Configure
+
 ```bash
-nano CONFIG.env
-
-# Change these 3 lines:
-TARGET_WEBSITE_URL=http://your-website.com    # Your actual website
-PUBLIC_IP_OR_DOMAIN=your-domain.com            # Public domain/IP
-PUBLIC_PORT=8080                               # Public port (optional)
+cd [project-directory]
+cat CONFIG.env
+# Edit target website URL:
+# TARGET_WEBSITE_URL=http://your-website.com    # Your backend
+# PUBLIC_IP_OR_DOMAIN=your-domain.com            # Public domain
+# PUBLIC_PORT=8080                               # Public port
+nano CONFIG.env  # Edit your settings
 ```
 
-### 2. Start WAF (One Command)
+### 2. Start WAF
 
 ```bash
 bash start_waf.sh
 ```
 
-**Automatically:**
-- ✅ Deploys all services
-- ✅ Starts monitoring daemon
-- ✅ Enables auto-restart on failure
-- ✅ Protects your site 24/7
+The script will:
+- ✅ Build Docker images
+- ✅ Start all services (WAF, Nginx, Target App)
+- ✅ Initialize database
+- ✅ Load models
+- ✅ Launch monitoring daemon
 
-### 3. Verify It's Working
+### 3. Test Protection
 
 ```bash
-# Visit your website (now protected)
-open http://<your-ip>:8080
+# Access the protected website
+curl http://localhost:8080/
 
-# Test attack blocking
-curl "http://<your-ip>:8080/path?q=' OR 1=1"
-# Response: 403 Forbidden ✓ (Attack blocked!)
+# Test attack detection  
+curl "http://localhost:8080/search?q=' OR 1=1--"     # SQL Injection - BLOCKED ✓
+curl "http://localhost:8080/page?id=<script>alert(1)</script>"  # XSS - BLOCKED ✓
+
+# View dashboard
+open http://localhost:8080/dashboard
 ```
 
----
+## 🏗️ Architecture
 
-## 🛑 Stop Protection
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Client Browser                        │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼ (HTTP Request)
+         ┌───────────────────────┐
+         │  NGINX (Port 8080)    │ ← Public entry point
+         │  Reverse Proxy        │
+         └───────────┬───────────┘
+                     │
+                     ▼
+      ┌──────────────────────────────────┐
+      │     WAF Service (Port 8000)      │
+      │  ┌────────────────────────────┐  │
+      │  │ LAYER 1: Rule Engine       │  │ Fast pattern/keyword matching
+      │  ├────────────────────────────┤  │
+      │  │ LAYER 2: BERT Detector     │  │ ML-based classification
+      │  ├────────────────────────────┤  │
+      │  │ LAYER 3: Anomaly Detection │  │ Zero-day detection via embeddings
+      │  ├────────────────────────────┤  │
+      │  │ LAYER 4: RL Policy         │  │ Learned from admin feedback
+      │  └────────────────────────────┘  │
+      │                                   │
+      │  Combined Decision: ALLOW/BLOCK   │
+      └──────────────┬───────────────────┘
+                     │
+             ┌───────┴────────┐
+             │                │
+      ✓ ALLOW               ✗ BLOCK
+             │                │
+             ▼                ▼
+    ┌──────────────────┐  Return 403
+    │  Juice Shop or   │  (Logged in DB)
+    │  Your Website    │
+    │  (Port 3000)     │
+    └──────────────────┘
+             │
+             ▼ (HTTP Response)
+         Back to Client
+```
+
+## 🔍 Detection Engines
+
+### Layer 1: Rule Engine
+Fast, signature-based detection:
+- SQL Injection patterns (UNION SELECT, OR 1=1, etc.)
+- XSS patterns (script tags, event handlers)
+- Path traversal (../, ..\)
+- Command injection (shell commands)
+- LDAP/XML injection
+- URL encoding bypasses
+
+### Layer 2: BERT Classifier  
+SecureBERT neural network:
+- Trained on benign and malicious HTTP requests
+- Returns confidence scores (0.0-1.0)
+- Detects novel attack variants
+- ~85% zero-day detection accuracy
+- <100ms inference latency
+
+### Layer 3: Anomaly Detection (Zero-Day)
+Similarity-based detection:
+- Stores embeddings from benign requests
+- Detects new requests far from benign cluster
+- Uses cosine similarity + statistical distance
+- Flags potential zero-day attacks
+- Learns online as new benign traffic arrives
+
+### Layer 4: RL Policy
+Reinforcement Learning:
+- Q-learning: state = (bert_score, rule_score, method, endpoint)
+- Admin feedback updates decision policy
+- Epsilon-greedy exploration/exploitation
+- Continuous policy improvement over time
+
+## ⚙️ Configuration
+
+Edit `CONFIG.env`:
+
+```bash
+# TARGET APPLICATION
+TARGET_WEBSITE_URL=http://target-app:3000     # Backend to protect
+PUBLIC_IP_OR_DOMAIN=localhost
+PUBLIC_PORT=8080
+
+# ML THRESHOLDS (0.0 to 1.0)
+AI_CONFIDENCE_THRESHOLD=0.95              # BERT confidence to block
+UNCERTAINTY_THRESHOLD=0.85                # Flag uncertain predictions
+RULE_ENGINE_THRESHOLD=0.70                # Rule score threshold
+ANOMALY_THRESHOLD=0.75                    # Anomaly score threshold
+COMBINED_THRESHOLD=0.85                   # Combined multi-layer threshold
+
+# REINFORCEMENT LEARNING
+RL_ENABLED=true
+RL_EPSILON=0.1                            # Exploration rate
+RL_ALPHA=0.1                              # Learning rate
+RL_GAMMA=0.9                              # Discount factor
+
+# ANOMALY DETECTION
+ANOMALY_ENABLED=true
+ANOMALY_EMBEDDING_CACHE_SIZE=1000         # Benign embeddings to store
+BLOCK_ON_ANOMALY=true
+BLOCK_ON_UNCERTAIN=false
+
+# LOGGING
+LOG_LEVEL=INFO
+LOG_FILE=/app/logs/waf.log
+LOG_ALLOWED_REQUESTS=true
+
+# FEATURES
+ADMIN_API_ENABLED=true
+```
+
+## 📊 Admin API Endpoints
+
+### Get Recent Logs
+```bash
+curl http://localhost:8080/api/logs?limit=100
+```
+
+### Get Statistics
+```bash
+curl http://localhost:8080/api/stats
+```
+
+### Submit Feedback (Train RL)
+```bash
+curl -X POST http://localhost:8080/api/feedback \
+  -H "Content-Type: application/json" \
+  -d '{
+    "request_id": "12345",
+    "decision": "malicious",
+    "confidence": 0.95,
+    "notes": "Actually detected a SQL injection attack"
+  }'
+```
+
+### View RL Q-Table
+```bash
+curl http://localhost:8080/api/qtable?limit=50
+```
+
+### Get Configuration
+```bash
+curl http://localhost:8080/api/config
+```
+
+### Update Thresholds (Runtime)
+```bash
+curl -X POST http://localhost:8080/api/config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "threshold_name": "AI_CONFIDENCE_THRESHOLD",
+    "value": 0.90
+  }'
+```
+
+## 📈 Dashboard
+
+Access at `http://localhost:8080/dashboard`
+
+Features:
+- Real-time statistics
+- Recent blocked/allowed requests  
+- Threat visualization
+- Action buttons (export logs, view config)
+- Auto-refreshes every 5 seconds
+
+## 🧪 Testing
+
+### Test SQL Injection Detection
+```bash
+curl "http://localhost:8080/user/profile?id=1' OR '1'='1"
+curl "http://localhost:8080/search?q='; DROP TABLE users;--"
+```
+
+### Test XSS Detection
+```bash
+curl "http://localhost:8080/page?content=<script>alert('xss')</script>"
+curl "http://localhost:8080/comment?text=<img src=x onerror=alert(1)>"
+```
+
+### Test Path Traversal Detection
+```bash
+curl "http://localhost:8080/files?path=../../../../etc/passwd"
+curl "http://localhost:8080/image?id=..%2F..%2Fetc%2Fpasswd"
+```
+
+### Test Command Injection Detection
+```bash
+curl "http://localhost:8080/api/exec?cmd=ls;cat /etc/passwd"
+curl "http://localhost:8080/execute?command=id|whoami"
+```
+
+## 🛑 Stopping the WAF
 
 ```bash
 bash stop_waf.sh
 ```
 
----
+Gracefully stops all services and cleans up Docker containers.
 
-## 📊 Architecture
+## 📋 Logs and Monitoring
 
-```
-Internet Traffic
-    ↓
-[Nginx Reverse Proxy] ← Routes traffic
-    ↓
-[WAF Service - BERT AI] ← Analyzes requests
-    ├→ Layer 1: Rule-based detection (keywords, encoding)
-    ├→ Layer 2: AI inference (BERT model)
-    ├→ Layer 3: Uncertainty detection
-    └→ Layer 4: Combined decision
-    ↓
-[Your Website] ← Only safe traffic reaches your app
-```
-
----
-
-## 🎯 Detection Capabilities
-
-| Attack Type | Detection | Speed |
-|------------|-----------|-------|
-| SQL Injection | ✅ 99% | <100ms |
-| Cross-Site Scripting (XSS) | ✅ 95% | <100ms |
-| Path Traversal | ✅ 98% | <100ms |
-| Command Injection | ✅ 94% | <100ms |
-| Zero-Day Variants | ✅ 85% | <100ms |
-
----
-
-## 📈 Monitoring
-
+### View Real-Time Logs
 ```bash
-# View live attack detection
-tail -f waf_production.log
-
-# Check service status
-docker-compose ps
-
-# View all HTTP traffic
-tail -f nginx/logs/access.log
-
-# View only blocked attacks (403 responses)
-tail -f nginx/logs/access.log | grep " 403 "
+docker-compose logs -f waf-service
 ```
 
----
-
-## 🔧 Configuration Options
-
-Edit `CONFIG.env` for:
-- **Website URL**: Where your app is hosted
-- **Public Domain**: User-facing address
-- **AI Sensitivity**: 0.5 (aggressive) to 0.95 (conservative)
-- **Email Alerts**: Optional failure notifications
-- **Resource Limits**: CPU/Memory constraints
-
----
-
-## 🚀 Deployment Scenarios
-
-### Local Testing
+### Monitor Performance
 ```bash
-# Run on localhost:8080
-CONFIG: TARGET_WEBSITE_URL=http://localhost:3000
-        PUBLIC_IP_OR_DOMAIN=localhost
-bash start_waf.sh
+docker stats waf-service nginx target-app
 ```
 
-### Production (AWS/Azure/GCP)
+### Export Request Logs
 ```bash
-# Run on cloud server
-CONFIG: TARGET_WEBSITE_URL=http://internal-app:3000
-        PUBLIC_IP_OR_DOMAIN=your-domain.com
-        PUBLIC_PORT=443
-bash start_waf.sh
+curl http://localhost:8080/api/logs?limit=10000 > logs_export.json
 ```
 
-### Existing Website
+## 🔄 Reinforcement Learning Workflow
+
+1. **Initial State**: WAF blocks/allows using thresholds
+2. **Admin Reviews**: Team reviews at `/api/logs`  
+3. **Submit Feedback**: Post decision to `/api/feedback`
+4. **RL Update**: Q-values updated with reward signal
+5. **Policy Improvement**: Learns to classify better
+6. **Continuous Learning**: Policy improves over time
+
+## 📚 File Structure
+
+```
+waf/
+├── app/
+│   ├── main.py              # FastAPI app + endpoints
+│   ├── config.py            # Configuration management
+│   ├── proxy.py             # Reverse proxy logic
+│   ├── bert_detector.py     # BERT inference
+│   ├── rule_engine.py       # Rule-based detection
+│   ├── rl_engine.py         # Reinforcement learning
+│   ├── anomaly_engine.py    # Anomaly detection
+│   └── utils.py             # Utilities
+├── model/
+│   ├── transformer.py       # BERT model
+│   ├── tokenizer.py         # HTTP tokenizer
+│   └── weights/             # Pre-trained weights
+├── database.py              # SQLite management
+├── Dockerfile               # Container build
+└── requirements.txt         # Python dependencies
+```
+
+## 🐛 Troubleshooting
+
+### Models Not Loaded
 ```bash
-# Protect existing application
-CONFIG: TARGET_WEBSITE_URL=http://existing-app.com
-        PUBLIC_IP_OR_DOMAIN=your-ip-or-domain
-bash start_waf.sh
+docker-compose exec waf-service ls -la /app/model/weights/
 ```
 
----
-
-## ✨ Key Features
-
-- **AI-Powered**: BERT Transformer detects semantic attacks, not just patterns
-- **Zero-Day Ready**: 85% detection on never-before-seen attack variants
-- **Low False Positives**: <2% false positive rate (optimized threshold)
-- **Real-Time**: 40-80ms detection latency per request
-- **Auto-Recovery**: Restarts automatically if service fails
-- **Production-Ready**: Health checks, monitoring, logging, auto-restart
-- **Plug-and-Play**: Change CONFIG.env and deploy
-
----
-
-## 📁 Project Structure
-
-```
-transformer-waf-test/
-├── CONFIG.env              ← Configure for your website
-├── docker-compose.yml      ← Service orchestration
-├── start_waf.sh           ← Launch WAF in production
-├── stop_waf.sh            ← Stop WAF
-├── monitor_waf.sh         ← Background health monitoring
-├── setup.sh               ← Check prerequisites
-├── README.md              ← This file
-│
-├── waf/                   ← WAF Application
-│   ├── app/main.py        ← FastAPI inference engine
-│   ├── model/             ← BERT model & tokenizer
-│   ├── data/              ← Data processing
-│   ├── train/             ← Training pipeline
-│   └── utils/             ← Utilities
-│
-└── nginx/                 ← Reverse proxy config
-    ├── nginx.conf         ← Routes traffic to WAF
-    └── logs/              ← Access/error logs
-```
-
----
-
-## 🔒 Security
-
-- **Fail-Safe**: If WAF unavailable, traffic passes through (prevents blocking legitimate users)
-- **Isolated**: WAF API only accessible internally (port 8000)
-- **Protected**: Only Nginx exposed to internet (port 8080)
-- **Logged**: All requests logged for compliance and audit
-
----
-
-## 🆘 Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| Website won't load | Check: `docker-compose ps` and `tail -f nginx/logs/access.log` |
-| Attacks not blocked | Verify threshold in `CONFIG.env`: AI_CONFIDENCE_THRESHOLD |
-| High disk usage | Log rotation enabled (50MB max per file) |
-| Need to restart | Run: `bash stop_waf.sh && bash start_waf.sh` |
-| Check logs | Run: `tail -f waf_production.log` |
-
----
-
-## 📞 Support
-
-**Common Commands:**
+### High False Positive Rate
 ```bash
-start_waf.sh           # Start WAF on your website
-stop_waf.sh            # Stop WAF
-docker-compose ps      # Check service status
-tail -f waf_production.log  # View production logs
+# Lower thresholds in CONFIG.env
+AI_CONFIDENCE_THRESHOLD=0.90
 ```
 
-**Check Status:**
+### Database Locked Error
 ```bash
-# Should return JSON response (WAF is healthy)
-curl http://localhost:8000/
-
-# Check Nginx routing
-curl http://localhost:8080/ -I
+rm -f waf/data/waf.db
+docker-compose restart waf-service
 ```
+
+## 🔐 Security Best Practices
+
+1. Store models in secure location
+2. Use HTTPS/SSL for production
+3. Add authentication to `/api/` endpoints
+4. Run in isolated networks
+5. Monitor block rates for anomalies
+6. Update rule patterns regularly
 
 ---
 
-## 📄 License
-
-MIT - Use freely for educational and commercial protection.
-
----
-
-**Ready to protect your website?**
-
-```bash
-1. Edit CONFIG.env with your website details
-2. Run: bash start_waf.sh
-3. Your website is now protected 24/7 ✓
-```
+**🎯 Your website is now protected 24/7 with AI-powered threat detection!**
