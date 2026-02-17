@@ -194,6 +194,263 @@ curl -I "http://localhost:8080/rest/products/search?q=%27%20OR%201=1%20--"  # At
 docker-compose down
 ```
 
+---
+
+## 📖 Complete Usage Guide - How Anyone Can Use This Project
+
+This guide walks through every step, from installation to testing, in simple terms.
+
+### **Level 1: Absolute Beginner Setup (5 minutes)**
+
+#### **1. Install Requirements**
+Make sure you have these installed on your computer:
+
+```bash
+# Check if Docker is installed
+docker --version
+
+# Check if Python is installed  
+python3 --version
+
+# If not installed:
+# - Download Docker Desktop: https://www.docker.com/products/docker-desktop
+# - Download Python: https://www.python.org/downloads
+```
+
+#### **2. Get the Project**
+```bash
+# Download the project from GitHub
+git clone https://github.com/PriscillajospinG/transformer-waf-test.git
+
+# Go into the project folder
+cd transformer-waf-test
+```
+
+#### **3. Start Everything** 
+```bash
+# Start all services (Nginx, WAF, Juice Shop app)
+docker-compose up -d --build
+
+# Wait 2-3 minutes for containers to start
+sleep 180
+
+# Verify everything is running
+docker ps
+```
+
+You should see 3 containers running:
+- `waf-service` - The AI protection engine
+- `waf-nginx` - The entry point (reverse proxy)  
+- `juice-shop` - The vulnerable test app
+
+---
+
+### **Level 2: Testing the WAF (Choose One Option)**
+
+#### **🟢 Option A: See the Results Live (Easiest)**
+```bash
+python3 waf_dashboard.py
+```
+
+**What you'll see:**
+- Real-time list of requests being analyzed
+- Whether each request was BLOCKED or ALLOWED
+- The AI confidence score for each decision
+- Performance metrics
+
+**Example output:**
+```
+🛡️ TRANSFORMER WAF - REAL-TIME DETECTION DASHBOARD
+
+✅ ALLOWED: http://localhost:8080/api/users (benign request)
+❌ BLOCKED: ...?q=' OR 1=1 -- (SQL injection detected - 0.98 confidence)
+✅ ALLOWED: http://localhost:8080/rest/products (normal search)
+❌ BLOCKED: ...?q=<script>alert(1)</script> (XSS detected - 0.96 confidence)
+
+Success Rate: 100% | Detection Latency: 45ms avg
+```
+
+#### **🟡 Option B: Interactive Testing**
+```bash
+python3 test_realtime.py
+```
+
+Choose from menu:
+1. Test benign (safe) requests
+2. Test SQL injection attacks
+3. Test XSS attacks  
+4. Test path traversal (file access) attacks
+5. View detailed logs
+
+#### **🔴 Option C: Automated Full Test Suite**
+```bash
+python3 scripts/test_zero_day_detection.py
+```
+
+Runs 30+ predefined tests automatically and shows results:
+```
+✅ Benign Requests: 5/5 passed
+✅ SQL Injection: 8/8 blocked
+✅ XSS Attacks: 7/7 blocked
+✅ Path Traversal: 6/6 blocked
+✅ Command Injection: 4/4 blocked
+
+Total: 30/30 passed (100% success rate)
+```
+
+#### **🔵 Option D: Manual Testing with curl**
+```bash
+# Test 1: Normal request (should be ALLOWED = 200)
+curl -I "http://localhost:8080/"
+
+# Test 2: SQL injection (should be BLOCKED = 403)
+curl -I "http://localhost:8080/rest/products/search?q=' OR 1=1 --"
+
+# Test 3: XSS attack (should be BLOCKED = 403)
+curl -I "http://localhost:8080/rest/products/search?q=<script>alert(1)</script>"
+
+# Test 4: Path traversal (should be BLOCKED = 403)
+curl -I "http://localhost:8080/etc/passwd"
+
+# Test 5: Command injection (should be BLOCKED = 403)
+curl -I "http://localhost:8080/api/feedback?msg=;cat%20/etc/passwd;"
+```
+
+**Expected Results:**
+- ✅ Benign requests return `200 OK`
+- ❌ Attack requests return `403 Forbidden`
+
+---
+
+### **Level 3: Monitoring & Debugging**
+
+#### **View What the WAF is Doing**
+```bash
+# Watch logs in real-time
+docker logs -f waf-service
+
+# You'll see entries like:
+# [INFO] Request: /api/users - Decision: ALLOW (benign)
+# [WARNING] Request: /search?q=' OR 1=1 - Decision: BLOCK (SQL injection confidence: 0.98)
+```
+
+#### **Check System Health**
+```bash
+# Is the WAF service working?
+curl http://localhost:8000/health
+
+# Response should be:
+# {"status": "running", "zero_day_protection": "enabled", "threshold": 0.95}
+```
+
+#### **View All Requests Nginx Received**
+```bash
+# See every HTTP request and response
+tail -f nginx/logs/access.log
+```
+
+---
+
+### **Level 4: Accessing the Application**
+
+#### **Open in Browser**
+Go to: **http://localhost:8080**
+
+You'll see the OWASP Juice Shop vulnerable application - but now it's protected!
+
+**Try these:**
+- ✅ Normal shopping: Search for products, add to cart (ALLOWED)
+- ❌ Try SQL injection: Search for `' OR 1=1 --` (BLOCKED)
+- ❌ Try XSS: Search for `<img src=x onerror=alert(1)>` (BLOCKED)
+
+---
+
+### **Level 5: Stopping Everything**
+
+When you're done testing:
+```bash
+# Stop all containers
+docker-compose down
+
+# Verify they're stopped
+docker ps  # Should be empty or show only other containers
+```
+
+---
+
+## 🎯 How It Works (Simple Explanation)
+
+```
+Your Request
+    ↓
+Nginx (Port 8080) - entry point
+    ↓
+WAF Service analyzes request using 4 layers:
+    1️⃣  Rule-Based: Check for known attack keywords (1ms)
+    2️⃣  AI Model: Use Transformer to understand meaning (40ms)
+    3️⃣  Uncertainty: Flag borderline cases (20ms)
+    4️⃣  Combined: Make final decision (30ms)
+    ↓
+DECISION: Allow (200) or Block (403)
+    ↓
+Result: Request reaches app OR gets blocked
+```
+
+---
+
+## 🚀 Common Use Cases
+
+### **I want to test our application against AI-powered attacks**
+```bash
+# Run the full test suite
+python3 scripts/test_zero_day_detection.py
+```
+
+### **I want to see if my custom payloads get blocked**
+```bash
+# Use curl to test your specific attacks
+curl -I "http://localhost:8080/path?param=YOUR_PAYLOAD_HERE"
+
+# 200 = ALLOWED (benign)
+# 403 = BLOCKED (detected as attack)
+```
+
+### **I want to integrate this WAF with my own app**
+Edit `docker-compose.yml`:
+```yaml
+services:
+  my-app:
+    image: my-application:latest
+    # ... your config
+    networks:
+      - waf-net
+  # WAF will protect traffic to my-app
+```
+
+### **I want to understand why a request was blocked**
+```bash
+# Check the logs
+docker logs waf-service | grep "BLOCK"
+
+# You'll see:
+# [BLOCKED] Request: /search?q=<tag> | Layer 2 (AI): confidence=0.98
+# Reason: XSS attack pattern detected
+```
+
+---
+
+## ✅ Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Containers won't start | Run `docker-compose up -d --build` again, wait 3 min |
+| Port 8080 already in use | `docker ps` find what's using it, or change port in docker-compose.yml |
+| Python script gives error | Install PIL: `pip install Pillow` |
+| WAF blocking legitimate traffic | Adjust threshold in `waf/app/main.py` (line 28: `AI_CONFIDENCE_THRESHOLD`) |
+| Want to see more logs | Run `docker logs waf-service -f` to follow logs in real-time |
+
+---
+
 ## ✅ What to Expect - Test Results
 
 After running the dashboard, you should see:
