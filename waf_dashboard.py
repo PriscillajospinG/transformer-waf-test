@@ -129,7 +129,7 @@ def main():
     print(f"   Success Rate: {(passed/len(tests))*100:.0f}%")
     print(f"   Status: {'🟢 OPERATIONAL' if passed == len(tests) else '🟡 DEGRADED'}")
     print(f"\n   Key Metrics:")
-    print(f"      • Benign Traffic: ✓ ALLOWED")
+    print(f"      • Benign Traffic: ✓ ALLOWEDs")
     print(f"      • Known Attacks: ✓ BLOCKED")
     print(f"      • Zero-Day Variants: ✓ BLOCKED")
     print(f"      • Encoding Attacks: ✓ BLOCKED")
