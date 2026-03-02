@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureBERT WAF — Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">🛡️</span>
+                <span class="logo-text">SecureBERT <span class="logo-accent">WAF</span></span>
+            </div>
+            <span class="badge badge-live">● LIVE</span>
+        </div>
+        <div class="header-right">
+            <span class="model-tag">Model: bert-base-uncased (fine-tuned)</span>
+            <span id="clock" class="clock"></span>
+        </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <section class="stats-grid">
+        <div class="stat-card card-total">
+            <div class="stat-icon">📊</div>
+            <div class="stat-info">
+                <span class="stat-label">Total Requests</span>
+                <span id="stat-total" class="stat-value">0</span>
+            </div>
+        </div>
+        <div class="stat-card card-blocked">
+            <div class="stat-icon">🚫</div>
+            <div class="stat-info">
+                <span class="stat-label">Blocked</span>
+                <span id="stat-blocked" class="stat-value">0</span>
+            </div>
+        </div>
+        <div class="stat-card card-allowed">
+            <div class="stat-icon">✅</div>
+            <div class="stat-info">
+                <span class="stat-label">Allowed</span>
+                <span id="stat-allowed" class="stat-value">0</span>
+            </div>
+        </div>
+        <div class="stat-card card-rate">
+            <div class="stat-icon">📈</div>
+            <div class="stat-info">
+                <span class="stat-label">Block Rate</span>
+                <span id="stat-rate" class="stat-value">0%</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Attack Breakdown -->
+        <section class="panel attack-panel">
+            <h2 class="panel-title">⚡ Attack Breakdown</h2>
+            <div class="attack-bars">
+                <div class="attack-row">
+                    <span class="attack-label">SQL Injection</span>
+                    <div class="bar-track">
+                        <div id="bar-sqli" class="bar-fill bar-sqli"></div>
+                    </div>
+                    <span id="count-sqli" class="attack-count">0</span>
+                </div>
+                <div class="attack-row">
+                    <span class="attack-label">XSS</span>
+                    <div class="bar-track">
+                        <div id="bar-xss" class="bar-fill bar-xss"></div>
+                    </div>
+                    <span id="count-xss" class="attack-count">0</span>
+                </div>
+                <div class="attack-row">
+                    <span class="attack-label">Path Traversal</span>
+                    <div class="bar-track">
+                        <div id="bar-path" class="bar-fill bar-path"></div>
+                    </div>
+                    <span id="count-path" class="attack-count">0</span>
+                </div>
+                <div class="attack-row">
+                    <span class="attack-label">Encoding</span>
+                    <div class="bar-track">
+                        <div id="bar-encoding" class="bar-fill bar-encoding"></div>
+                    </div>
+                    <span id="count-encoding" class="attack-count">0</span>
+                </div>
+                <div class="attack-row">
+                    <span class="attack-label">Other</span>
+                    <div class="bar-track">
+                        <div id="bar-other" class="bar-fill bar-other"></div>
+                    </div>
+                    <span id="count-other" class="attack-count">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Test Panel -->
+        <section class="panel test-panel">
+            <h2 class="panel-title">🧪 Attack Tester</h2>
+            <p class="test-desc">Enter a URL path to test against the WAF</p>
+            <div class="test-input-group">
+                <input type="text" id="test-url" class="test-input" placeholder="/rest/products/search?q=' OR 1=1 --" />
+                <button id="test-btn" class="test-btn" onclick="testUrl()">Analyze</button>
+            </div>
+            <div id="test-result" class="test-result hidden">
+                <div id="result-icon" class="result-icon"></div>
+                <div class="result-details">
+                    <span id="result-status" class="result-status"></span>
+                    <span id="result-reason" class="result-reason"></span>
+                    <span id="result-prob" class="result-prob"></span>
+                </div>
+            </div>
+            <!-- Quick test buttons -->
+            <div class="quick-tests">
+                <span class="quick-label">Quick Tests:</span>
+                <button class="quick-btn safe" onclick="quickTest('/rest/products/search?q=apple')">🟢 Safe
+                    Search</button>
+                <button class="quick-btn danger" onclick="quickTest(&quot;/api/Users?q=' OR 1=1 --&quot;)">🔴
+                    SQLi</button>
+                <button class="quick-btn danger"
+                    onclick="quickTest(&quot;/search?q=&lt;script&gt;alert(1)&lt;/script&gt;&quot;)">🔴 XSS</button>
+                <button class="quick-btn danger" onclick="quickTest('/../../etc/passwd')">🔴 Path Traversal</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Request Log -->
+    <section class="panel log-panel">
+        <div class="log-header">
+            <h2 class="panel-title">📋 Live Request Log</h2>
+            <span id="log-count" class="log-count">0 entries</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>IP</th>
+                        <th>Method</th>
+                        <th>URI</th>
+                        <th>Status</th>
+                        <th>Reason</th>
+                        <th>Prob</th>
+                    </tr>
+                </thead>
+                <tbody id="log-body">
+                    <tr class="empty-row">
+                        <td colspan="7">Waiting for requests...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <span>SecureBERT WAF Dashboard • Powered by Transformer AI</span>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
