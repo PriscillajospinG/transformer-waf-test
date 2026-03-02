@@ -1,9 +1,14 @@
 from fastapi import FastAPI, Request, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import logging
 import torch
 import os
 import sys
 import re
+import time
+from collections import deque
+from datetime import datetime
 
 # Ensure we can import from sibling directories
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,10 +22,69 @@ logger = logging.getLogger("waf-service")
 
 app = FastAPI()
 
+# CORS for dashboard
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Global Model & Tokenizer
 model = None
 tokenizer = None
 device = torch.device("cpu")
+
+# ===== DASHBOARD DATA =====
+request_log = deque(maxlen=200)
+stats = {
+    "total_requests": 0,
+    "blocked": 0,
+    "allowed": 0,
+    "attack_types": {
+        "sqli": 0,
+        "xss": 0,
+        "path_traversal": 0,
+        "encoding": 0,
+        "other": 0
+    }
+}
+
+def classify_attack(uri, keywords):
+    """Classify the attack type based on keywords/patterns"""
+    uri_lower = uri.lower()
+    if any(k in uri_lower for k in ['select', 'union', 'drop', 'insert', 'or 1=1', 'and 1=1', "'"]):
+        return "sqli"
+    if any(k in uri_lower for k in ['script', 'alert', 'onerror', 'onclick', 'onload', 'eval']):
+        return "xss"
+    if any(k in uri_lower for k in ['../', '..\\', 'etc/', 'passwd', 'shadow']):
+        return "path_traversal"
+    if any(k in uri_lower for k in ['%00', '%2e']):
+        return "encoding"
+    return "other"
+
+def log_request(ip, uri, method, status, reason, prob=0.0):
+    """Log a request for the dashboard"""
+    entry = {
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "ip": ip,
+        "method": method,
+        "uri": uri[:120],
+        "status": status,
+        "reason": reason,
+        "probability": round(prob, 4)
+    }
+    request_log.appendleft(entry)
+    stats["total_requests"] += 1
+    if status == "blocked":
+        stats["blocked"] += 1
+        attack_type = classify_attack(uri, [])
+        stats["attack_types"][attack_type] += 1
+    else:
+        stats["allowed"] += 1
+
+class TestRequest(BaseModel):
+    url: str
 
 # ===== ZERO-DAY DETECTION CONFIGURATION =====
 # Very high threshold to avoid false positives while catching clear attacks
@@ -147,6 +211,65 @@ def health_check():
         "confidence_threshold": AI_CONFIDENCE_THRESHOLD
     }
 
+# ===== DASHBOARD API =====
+@app.get("/api/stats")
+def get_stats():
+    return stats
+
+@app.get("/api/logs")
+def get_logs():
+    return list(request_log)
+
+@app.post("/api/test")
+async def test_url(req: TestRequest):
+    """Test a URL against the WAF from the dashboard"""
+    uri = req.url
+    ip = "dashboard-test"
+    method = "GET"
+    
+    if model is None or tokenizer is None:
+        return {"status": "allowed", "reason": "Model not loaded", "probability": 0}
+    
+    try:
+        # Layer 1: Rule-based
+        is_keyword_suspicious, keywords = detect_suspicious_keywords(uri)
+        has_encoding_attack = detect_encoding_attacks(uri)
+        has_injection = detect_injection_patterns(uri)
+        is_char_anomaly, char_count = detect_special_char_anomaly(uri)
+        
+        if is_keyword_suspicious and has_injection:
+            log_request(ip, uri, method, "blocked", "Rule-Based", 1.0)
+            return {"status": "blocked", "reason": "Rule-Based Detection", "probability": 1.0}
+        
+        if has_encoding_attack:
+            log_request(ip, uri, method, "blocked", "Encoding Attack", 1.0)
+            return {"status": "blocked", "reason": "Encoding Attack", "probability": 1.0}
+        
+        # Layer 2: AI
+        text = preprocess_request(method, uri)
+        encoding = tokenizer.encode(text)
+        input_ids = encoding['input_ids'].to(device)
+        attention_mask = encoding['attention_mask'].to(device)
+        
+        with torch.no_grad():
+            outputs = model(input_ids, attention_mask=attention_mask)
+            probs = torch.softmax(outputs, dim=1)
+            malicious_prob = probs[0][1].item()
+        
+        if malicious_prob > AI_CONFIDENCE_THRESHOLD:
+            log_request(ip, uri, method, "blocked", f"AI Detection", malicious_prob)
+            return {"status": "blocked", "reason": f"AI Detection (prob={malicious_prob:.4f})", "probability": malicious_prob}
+        
+        is_uncertain = UNCERTAINTY_THRESHOLD <= malicious_prob < AI_CONFIDENCE_THRESHOLD
+        if is_uncertain and (is_keyword_suspicious or is_char_anomaly):
+            log_request(ip, uri, method, "blocked", "Uncertain + Anomaly", malicious_prob)
+            return {"status": "blocked", "reason": f"Uncertain AI + Anomaly (prob={malicious_prob:.4f})", "probability": malicious_prob}
+        
+        log_request(ip, uri, method, "allowed", "Safe", malicious_prob)
+        return {"status": "allowed", "reason": "Safe", "probability": malicious_prob}
+    except Exception as e:
+        return {"status": "error", "reason": str(e), "probability": 0}
+
 @app.api_route("/analyze", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 async def analyze_request(request: Request):
     """
@@ -171,10 +294,12 @@ async def analyze_request(request: Request):
         # Quick block if rule-based detection triggers
         if is_keyword_suspicious and has_injection:
             logger.warning(f"BLOCKING via Rule-Based Detection: IP={original_ip} URI={original_uri} Keywords={keywords}")
+            log_request(original_ip, original_uri, original_method, "blocked", "Rule-Based", 1.0)
             return Response(content="Blocked by SecureBERT WAF (Rule-Based)", status_code=403)
         
         if has_encoding_attack:
             logger.warning(f"BLOCKING Encoding Attack: IP={original_ip} URI={original_uri}")
+            log_request(original_ip, original_uri, original_method, "blocked", "Encoding", 1.0)
             return Response(content="Blocked by SecureBERT WAF (Encoding Attack)", status_code=403)
         
         # ===== LAYER 2: AI-Based Detection (SecureBERT) =====
@@ -224,9 +349,11 @@ async def analyze_request(request: Request):
         
         if should_block:
             logger.warning(f"BLOCKING: {log_msg} Reason={block_reason}")
+            log_request(original_ip, original_uri, original_method, "blocked", block_reason, malicious_prob)
             return Response(content=f"Blocked by SecureBERT WAF ({block_reason})", status_code=403)
         else:
             logger.info(f"ALLOWED: {log_msg}")
+            log_request(original_ip, original_uri, original_method, "allowed", "Safe", malicious_prob)
             return Response(status_code=200)
         
     except Exception as e:
