@@ -268,6 +268,13 @@ document.getElementById('test-url').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') testUrl();
 });
 
+// ===== QUICK TEST BUTTONS =====
+document.querySelectorAll('.quick-test-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        quickTest(btn.getAttribute('data-url'));
+    });
+});
+
 // ===== POLLING =====
 setInterval(() => { fetchStats(); fetchLogs(); }, REFRESH_MS);
 fetchStats();

@@ -1,916 +1,447 @@
-# Transformer-based Web Application Firewall (WAF)
+# 🛡️ SecureBERT WAF — AI-Powered Web Application Firewall
 
 ![Status](https://img.shields.io/badge/Status-Operational-brightgreen)
-![Model](https://img.shields.io/badge/Model-SecureBERT%20(Finetuned)-blue)
-![Platform](https://img.shields.io/badge/Platform-Docker%20%7C%20Nginx%20%7C%20Python-orange)
-![Threshold](https://img.shields.io/badge/AI%20Threshold-0.95-critical)
+![Model](https://img.shields.io/badge/Model-SecureBERT%20(Fine--tuned)-blue)
+![Platform](https://img.shields.io/badge/Platform-Docker%20%7C%20Standalone-orange)
 ![Detection](https://img.shields.io/badge/Zero--Day%20Detection-85%25-success)
+![Dashboard](https://img.shields.io/badge/Dashboard-Bootstrap%205%20%2B%20Chart.js-informational)
 
-## 🛡️ Production-Ready AI-Powered Web Application Firewall
+An intelligent, plug-and-play Web Application Firewall that uses **SecureBERT** (a fine-tuned BERT Transformer) to detect and block web attacks in real-time — including **zero-day variants** the model has never seen before.
 
-An intelligent, self-learning Web Application Firewall that uses **SecureBERT** (a fine-tuned BERT Transformer model) to detect and block web attacks in real-time, **including zero-day attack variants that the model has never seen before**.
+Drop it in front of **any** web application as a reverse-proxy plugin. No code changes required in your app.
 
-Unlike traditional WAFs relying on thousands of static regex rules, this system uses **deep learning to understand the semantic meaning** of HTTP requests and identify malicious payloads with 85%+ accuracy on previously unseen attacks.
+---
 
-### 🎯 What Makes This Different
+## ✨ Key Features
 
-| Feature | Traditional WAF | This Project |
-|---------|-----------------|-------------|
-| **Attack Detection** | Regex patterns (static) | AI-powered (adaptive) |
-| **Zero-Day Attacks** | ❌ High miss rate | ✅ 85% detection |
-| **False Positives** | 5-10% | <2% |
-| **Update Frequency** | Manual (slow) | Automatic via online learning |
-| **Latency** | 50-200ms | 40-80ms |
-| **Real-time Learning** | ❌ No | ✅ Yes (retrains on new data) |
+| Feature | Description |
+|---------|-------------|
+| **4-Layer Detection** | Rule-based → AI (BERT) → Uncertainty → Combined decision |
+| **Zero-Day Protection** | 85%+ detection on never-before-seen attack variants |
+| **Real-Time Dashboard** | Bootstrap 5 + Chart.js live monitoring UI |
+| **Plug-and-Play** | Docker sidecar — no code changes in your application |
+| **Self-Learning** | Online learning corrects false positives without downtime |
+| **Low Latency** | 40–80 ms per request |
 
-## 📋 Project Overview
-
-This project demonstrates how to build a production-grade WAF using neural networks with advanced zero-day protection. It combines:
-- **4-Layer Detection System**: Rule-based → AI-based → Uncertainty detection → Combined decision logic
-- **Transformer-based Detection**: A BERT-like model trained to classify HTTP requests as benign or malicious
-- **Zero-Day Protection**: Detects never-before-seen attack variants with 85%+ accuracy
-- **Real-time Protection**: Analyzes requests in <100ms and blocks threats (SQL Injection, XSS, Path Traversal, Command Injection)
-- **Containerized Architecture**: Runs as Docker services with Nginx reverse proxy integration
-- **Self-Learning Capability**: When legitimate requests are blocked (false positives), the system can retrain without downtime
-
-## 🚀 Features
-- **4-Layer Defense**: Rule-based + AI + Uncertainty + Combined decision logic
-- **Zero-Day Attack Detection**: Blocks never-before-seen attack variants (85%+ accuracy)
-- **AI-Powered Detection**: Uses a fine-tuned BERT model to classify HTTP requests
-- **Real-Time Protection**: Blocks SQL Injection (SQLi), XSS, Path Traversal, Command Injection in <100ms
-- **Fail-Safe Architecture**: Designed to "fail open" if the AI service is unreachable, ensuring app availability
-- **Adversarial Training**: Model trained on 40+ attack pattern variations to catch obfuscated attacks
-- **Plug-and-Play**: Runs as a Docker sidecar; no code changes required in your application
+---
 
 ## 🏗️ Architecture
 
-The WAF sits in front of your application as a reverse proxy, intercepting all HTTP traffic:
-
 ```
-[Client/Attacker] 
-      |
-      v
-[Nginx Reverse Proxy] --(1. Extract Request)--> [WAF Service (FastAPI)]
-      |                      ^                          |
-      |                      |                    (2. Tokenize HTTP request)
-      |                      |                          v
-      |                      |                   [HttpTokenizer]
-      |                      |                          |
-      |                      |                 (3. Feed tokens to model)
-      |                      |                          v
-      |                      |              [Transformer Model]
-      |                      |                          |
-      |                      |      (4. Classification: Benign vs Malicious)
-      |                      |                          |
-      |         (5. Decision)---------+------------------+
-      |
-      +---[200 OK]---> [Application]   (Benign requests pass through)
-      |
-      +---[403 Forbidden]---> [Block]   (Malicious requests blocked)
+Client ──▶ Nginx (port 8080) ──▶ WAF Service (FastAPI) ──▶ Decision
+                │                         │
+                │                  ┌──────┴──────┐
+                │                  │ 4 Layers:   │
+                │                  │ 1. Rules    │
+                │                  │ 2. AI/BERT  │
+                │                  │ 3. Uncertainty│
+                │                  │ 4. Combined │
+                │                  └──────┬──────┘
+                │                         │
+          200 OK ◀── Allow ◀──────────────┘
+          403    ◀── Block ◀──────────────┘
+                │
+                ▼
+        Your Application
 ```
 
-### Services Breakdown
-- **Nginx Container**: Reverse proxy on port 8080. Routes all traffic through the WAF via HTTP auth subrequests.
-- **WAF Service Container**: FastAPI application on port 8000. Runs the Transformer model inference and returns allow/block decisions.
-- **Test Application**: OWASP Juice Shop (vulnerable app). Used for testing and validation.
-
-### How Requests Flow
-1. Client sends HTTP request to `http://localhost:8080/...`
-2. Nginx intercepts the request and extracts: method, URI, headers
-3. Nginx sends a **subrequest** to WAF service at `/analyze` with original request details
-4. WAF service:
-   - Preprocesses the URI (e.g., normalizes IDs: `/user/123` → `/user/{ID}`)
-   - Tokenizes the HTTP text using `HttpTokenizer`
-   - Feeds tokens to the `WAFTransformer` model
-   - Model outputs confidence scores for two classes: [benign, malicious]
-   - Applies decision threshold (optimized: 0.95)
-5. WAF returns HTTP 200 (allow) or 403 (block)
-6. Nginx either forwards the request to Juice Shop or returns a 403 block page
-
-## 🛡️ 4-Layer Zero-Day Detection System
-
-The WAF doesn't rely on AI alone. Instead, it uses a multi-layered approach to catch attacks that even the best ML models might miss:
-
-### Layer 1: Rule-Based Detection (1ms)
-**Fast keyword and encoding pattern matching**
-- Detects 40+ suspicious keywords: `union`, `select`, `drop`, `script`, `alert`, `onerror`, `passwd`, etc.
-- Detects special character anomalies: excessive special chars, URL encoding tricks
-- Detects injection patterns: `%00`, `%2F`, `/*`, `*/`, `--`, `;`, `|`, `&`, backticks
-
-### Layer 2: AI Detection (40ms)
-**BERT-based semantic analysis**
-- Transformer model trained on 40+ attack pattern variations
-- Detects semantic meaning, not just syntax
-- Catches zero-day variants the model has never seen
-- Confidence threshold: 0.95 (very high confidence for blocking, reduces false positives)
-
-### Layer 3: Uncertainty Detection
-**Flag borderline predictions for combined analysis**
-- If malicious confidence is 0.70-0.80 (uncertain), flag for additional checks
-- Combine with rule-based signals to make final decision
-- Reduces false positives while maintaining high detection
-
-### Layer 4: Combined Decision Logic
-**Multiple signals must align**
-- Requires agreement between rule-based and AI detection
-- If either layer detects a threat AND AI confidence > 0.80, block immediately
-- Fail-safe: block if uncertain but any layer detects suspicious patterns
-
-**Result: 85%+ zero-day detection, <3% false positive rate**
-
-## 🛠️ Getting Started
-
-### Prerequisites
-- **Docker** and **Docker Compose** installed on your machine
-- **Python 3.10+** on your local system (for running test scripts)
-- **Git** to clone the repository
-- **~4GB free disk space** for Docker images and model weights
-
-### Quick Start (4 steps)
-
-#### Step 1: Clone & Navigate
-```bash
-git clone https://github.com/PriscillajospinG/transformer-waf-test.git
-cd transformer-waf-test
-```
-
-#### Step 2: Start the System
-```bash
-docker-compose up -d --build
-```
-
-**What happens:**
-- Builds the WAF service image (PyTorch, Transformers, FastAPI)
-- Launches Nginx on port 8080
-- Launches WAF service on port 8000 (internal)
-- Launches OWASP Juice Shop (vulnerable test app)
-- First run takes 2-3 minutes
-
-**Verify containers are running:**
-```bash
-docker ps
-# You should see: waf-nginx, waf-service, juice-shop
-```
-
-#### Step 3: Test the WAF (Choose an Option)
-
-**Option A: Live Dashboard (Recommended)**
-```bash
-python3 waf_dashboard.py
-```
-Shows real-time detection with analysis of all 4 protection layers. Expected: 100% success rate.
-
-**Option B: Real-Time Test Suite**
-```bash
-python3 test_realtime.py
-```
-Interactive testing showing detection decisions in real-time.
-
-**Option C: Comprehensive Test Suite**
-```bash
-python3 scripts/test_zero_day_detection.py
-```
-
-**Expected output:**
-```
-Zero-Day Attack Detection Test Suite
-✅ Benign Requests: 3 passed, 1 failed
-✅ Known Attacks: 3 passed, 0 failed
-✅ Zero-Day Variants: 6 passed, 2 failed
-✅ Encoding Attacks: 3 passed, 0 failed
-✅ Anomaly Detection: 2 passed, 0 failed
-
-Final Summary: 17 passed, 3 failed (85% Success Rate)
-```
-
-**Option D: Manual Testing**
-```bash
-curl -I "http://localhost:8080/"                              # Benign (200)
-curl -I "http://localhost:8080/rest/products/search?q=%27%20OR%201=1%20--"  # Attack (403)
-```
-
-#### Step 4: Stop the System
-```bash
-docker-compose down
-```
+| Service | Role | Port |
+|---------|------|------|
+| **Nginx** | Reverse proxy + dashboard host | `8080` |
+| **WAF Service** | FastAPI + BERT inference | `8000` |
+| **Target App** | Your web app (e.g. Juice Shop) | Internal |
 
 ---
-
-## 📖 Complete Usage Guide - How Anyone Can Use This Project
-
-This guide walks through every step, from installation to testing, in simple terms.
-
-### **Level 1: Absolute Beginner Setup (5 minutes)**
-
-#### **1. Install Requirements**
-Make sure you have these installed on your computer:
-
-```bash
-# Check if Docker is installed
-docker --version
-
-# Check if Python is installed  
-python3 --version
-
-# If not installed:
-# - Download Docker Desktop: https://www.docker.com/products/docker-desktop
-# - Download Python: https://www.python.org/downloads
-```
-
-#### **2. Get the Project**
-```bash
-# Download the project from GitHub
-git clone https://github.com/PriscillajospinG/transformer-waf-test.git
-
-# Go into the project folder
-cd transformer-waf-test
-```
-
-#### **3. Start Everything** 
-```bash
-# Start all services (Nginx, WAF, Juice Shop app)
-docker-compose up -d --build
-
-# Wait 2-3 minutes for containers to start
-sleep 180
-
-# Verify everything is running
-docker ps
-```
-
-You should see 3 containers running:
-- `waf-service` - The AI protection engine
-- `waf-nginx` - The entry point (reverse proxy)  
-- `juice-shop` - The vulnerable test app
-
----
-
-### **Level 2: Testing the WAF (Choose One Option)**
-
-#### **🟢 Option A: See the Results Live (Easiest)**
-```bash
-python3 waf_dashboard.py
-```
-
-**What you'll see:**
-- Real-time list of requests being analyzed
-- Whether each request was BLOCKED or ALLOWED
-- The AI confidence score for each decision
-- Performance metrics
-
-**Example output:**
-```
-🛡️ TRANSFORMER WAF - REAL-TIME DETECTION DASHBOARD
-
-✅ ALLOWED: http://localhost:8080/api/users (benign request)
-❌ BLOCKED: ...?q=' OR 1=1 -- (SQL injection detected - 0.98 confidence)
-✅ ALLOWED: http://localhost:8080/rest/products (normal search)
-❌ BLOCKED: ...?q=<script>alert(1)</script> (XSS detected - 0.96 confidence)
-
-Success Rate: 100% | Detection Latency: 45ms avg
-```
-
-#### **🟡 Option B: Interactive Testing**
-```bash
-python3 test_realtime.py
-```
-
-Choose from menu:
-1. Test benign (safe) requests
-2. Test SQL injection attacks
-3. Test XSS attacks  
-4. Test path traversal (file access) attacks
-5. View detailed logs
-
-#### **🔴 Option C: Automated Full Test Suite**
-```bash
-python3 scripts/test_zero_day_detection.py
-```
-
-Runs 30+ predefined tests automatically and shows results:
-```
-✅ Benign Requests: 5/5 passed
-✅ SQL Injection: 8/8 blocked
-✅ XSS Attacks: 7/7 blocked
-✅ Path Traversal: 6/6 blocked
-✅ Command Injection: 4/4 blocked
-
-Total: 30/30 passed (100% success rate)
-```
-
-#### **🔵 Option D: Manual Testing with curl**
-```bash
-# Test 1: Normal request (should be ALLOWED = 200)
-curl -I "http://localhost:8080/"
-
-# Test 2: SQL injection (should be BLOCKED = 403)
-curl -I "http://localhost:8080/rest/products/search?q=' OR 1=1 --"
-
-# Test 3: XSS attack (should be BLOCKED = 403)
-curl -I "http://localhost:8080/rest/products/search?q=<script>alert(1)</script>"
-
-# Test 4: Path traversal (should be BLOCKED = 403)
-curl -I "http://localhost:8080/etc/passwd"
-
-# Test 5: Command injection (should be BLOCKED = 403)
-curl -I "http://localhost:8080/api/feedback?msg=;cat%20/etc/passwd;"
-```
-
-**Expected Results:**
-- ✅ Benign requests return `200 OK`
-- ❌ Attack requests return `403 Forbidden`
-
----
-
-### **Level 3: Monitoring & Debugging**
-
-#### **View What the WAF is Doing**
-```bash
-# Watch logs in real-time
-docker logs -f waf-service
-
-# You'll see entries like:
-# [INFO] Request: /api/users - Decision: ALLOW (benign)
-# [WARNING] Request: /search?q=' OR 1=1 - Decision: BLOCK (SQL injection confidence: 0.98)
-```
-
-#### **Check System Health**
-```bash
-# Is the WAF service working?
-curl http://localhost:8000/health
-
-# Response should be:
-# {"status": "running", "zero_day_protection": "enabled", "threshold": 0.95}
-```
-
-#### **View All Requests Nginx Received**
-```bash
-# See every HTTP request and response
-tail -f nginx/logs/access.log
-```
-
----
-
-### **Level 4: Accessing the Application**
-
-#### **Open in Browser**
-Go to: **http://localhost:8080**
-
-You'll see the OWASP Juice Shop vulnerable application - but now it's protected!
-
-**Try these:**
-- ✅ Normal shopping: Search for products, add to cart (ALLOWED)
-- ❌ Try SQL injection: Search for `' OR 1=1 --` (BLOCKED)
-- ❌ Try XSS: Search for `<img src=x onerror=alert(1)>` (BLOCKED)
-
----
-
-### **Level 5: Stopping Everything**
-
-When you're done testing:
-```bash
-# Stop all containers
-docker-compose down
-
-# Verify they're stopped
-docker ps  # Should be empty or show only other containers
-```
-
----
-
-## 🎯 How It Works (Simple Explanation)
-
-```
-Your Request
-    ↓
-Nginx (Port 8080) - entry point
-    ↓
-WAF Service analyzes request using 4 layers:
-    1️⃣  Rule-Based: Check for known attack keywords (1ms)
-    2️⃣  AI Model: Use Transformer to understand meaning (40ms)
-    3️⃣  Uncertainty: Flag borderline cases (20ms)
-    4️⃣  Combined: Make final decision (30ms)
-    ↓
-DECISION: Allow (200) or Block (403)
-    ↓
-Result: Request reaches app OR gets blocked
-```
-
----
-
-## 🚀 Common Use Cases
-
-### **I want to test our application against AI-powered attacks**
-```bash
-# Run the full test suite
-python3 scripts/test_zero_day_detection.py
-```
-
-### **I want to see if my custom payloads get blocked**
-```bash
-# Use curl to test your specific attacks
-curl -I "http://localhost:8080/path?param=YOUR_PAYLOAD_HERE"
-
-# 200 = ALLOWED (benign)
-# 403 = BLOCKED (detected as attack)
-```
-
-### **I want to integrate this WAF with my own app**
-Edit `docker-compose.yml`:
-```yaml
-services:
-  my-app:
-    image: my-application:latest
-    # ... your config
-    networks:
-      - waf-net
-  # WAF will protect traffic to my-app
-```
-
-### **I want to understand why a request was blocked**
-```bash
-# Check the logs
-docker logs waf-service | grep "BLOCK"
-
-# You'll see:
-# [BLOCKED] Request: /search?q=<tag> | Layer 2 (AI): confidence=0.98
-# Reason: XSS attack pattern detected
-```
-
----
-
-## ✅ Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| Containers won't start | Run `docker-compose up -d --build` again, wait 3 min |
-| Port 8080 already in use | `docker ps` find what's using it, or change port in docker-compose.yml |
-| Python script gives error | Install PIL: `pip install Pillow` |
-| WAF blocking legitimate traffic | Adjust threshold in `waf/app/main.py` (line 28: `AI_CONFIDENCE_THRESHOLD`) |
-| Want to see more logs | Run `docker logs waf-service -f` to follow logs in real-time |
-
----
-
-## ✅ What to Expect - Test Results
-
-After running the dashboard, you should see:
-
-```
-🛡️ TRANSFORMER WAF - REAL-TIME DETECTION DASHBOARD
-Endpoint: http://localhost:8080
-AI Threshold: 0.95 (blocks if confidence > 0.95)
-
-📊 DASHBOARD SUMMARY
-✅ Passed: 6/6
-Success Rate: 100%
-Status: 🟢 OPERATIONAL
-
-Key Metrics:
-  • Benign Traffic: ✓ ALLOWED
-  • Known Attacks: ✓ BLOCKED
-  • Zero-Day Variants: ✓ BLOCKED
-  • Encoding Attacks: ✓ BLOCKED
-  • Detection Latency: <100ms per request
-```
-
-## 🎯 Monitoring & Real-Time Dashboard
-
-Once the WAF is running, use these tools for monitoring and testing:
-
-### Real-Time Dashboard
-```bash
-python3 waf_dashboard.py
-```
-**Features:**
-- Live request analysis showing all 4 detection layers
-- Real-time confidence scores from BERT model
-- Detection decision breakdown
-- Performance metrics and latency monitoring
-
-### Real-Time Test Suite
-```bash
-python3 test_realtime.py
-```
-**Features:**
-- Interactive testing of benign and malicious requests
-- Shows detection process for each request
-- Logs from WAF service for each test
-
-### View Logs
-```bash
-# View WAF detection logs
-docker-compose logs -f waf-service
-
-# View Nginx access logs (shows all HTTP decisions)
-tail -f nginx/logs/access.log
-
-# View Nginx error logs
-tail -f nginx/logs/error.log
-```
-
-### Health Check
-```bash
-curl http://localhost:8000/health
-# Returns: {"status": "running", "zero_day_protection": "enabled", "threshold": 0.95}
-```
-
-## 🧪 Manual Testing
-
-Try these requests while the system is running:
-
-### Benign Requests (Should return 200 OK)
-```bash
-# Normal search
-curl -I "http://localhost:8080/rest/products/search?q=apple"
-
-# API access
-curl -I "http://localhost:8080/api/Users"
-
-# Static assets
-curl -I "http://localhost:8080/assets/main.js"
-```
-
-### Attack Requests (Should return 403 Forbidden)
-
-**SQL Injection:**
-```bash
-curl -I "http://localhost:8080/rest/products/search?q=' OR 1=1 --"
-curl -I "http://localhost:8080/rest/products/search?q=' UNION SELECT * FROM users --"
-```
-
-**Cross-Site Scripting (XSS):**
-```bash
-curl -I "http://localhost:8080/rest/products/search?q=<script>alert(1)</script>"
-curl -I "http://localhost:8080/rest/products/search?q=<img src=x onerror=alert(1)>"
-```
-
-**Path Traversal:**
-```bash
-curl -I "http://localhost:8080/etc/passwd"
-curl -I "http://localhost:8080/assets/../../../etc/shadow"
-```
-
-**Command Injection:**
-```bash
-curl -I "http://localhost:8080/api/feedback?comment=;cat /etc/passwd"
-```
-
-**Generate continuous attack traffic:**
-```bash
-python3 scripts/generate_malicious.py
-```
 
 ## 📂 Project Structure
 
 ```
 transformer-waf-test/
-├── waf/                           # WAF Service (Core ML Logic)
-│   ├── app/
-│   │   └── main.py               # FastAPI application with /analyze endpoint (4-layer detection)
+├── waf/                        # Core WAF engine
+│   ├── app/main.py            # FastAPI app — /analyze, /api/stats, /api/logs, /api/test
 │   ├── model/
-│   │   ├── transformer.py        # WAFTransformer (BERT-like model)
-│   │   ├── tokenizer.py          # HttpTokenizer (converts HTTP text → tokens)
-│   │   └── weights/              # Pre-trained model and tokenizer weights
-│   │       ├── waf_model.pth     # Model weights (saved state_dict)
-│   │       └── tokenizer.json    # Tokenizer vocabulary
+│   │   ├── transformer.py     # WAFTransformer (BERT-based classifier)
+│   │   ├── tokenizer.py       # HttpTokenizer (BPE tokenization)
+│   │   └── weights/           # Pre-trained model + tokenizer files
 │   ├── data/
-│   │   ├── normalizer.py         # Request normalization (ID → {ID})
-│   │   └── build_dataset.py      # Dataset creation utilities
+│   │   ├── normalizer.py      # URI normalization
+│   │   └── build_dataset.py   # Dataset generation
 │   ├── train/
-│   │   ├── train_pipeline.py     # Main training script (with adversarial variations)
-│   │   ├── online_learning.py    # Online learning for false positive correction
-│   │   └── train_placeholder.py  # Placeholder for model training
-│   ├── utils/
-│   │   └── log_parser.py         # Parse Nginx logs
-│   ├── requirements.txt          # Python dependencies
-│   └── Dockerfile                # Docker build config for WAF service
+│   │   ├── train_pipeline.py  # Full training pipeline
+│   │   └── online_learning.py # False-positive correction
+│   ├── requirements.txt
+│   └── Dockerfile
 │
-├── nginx/                         # Reverse Proxy & Gateway
-│   ├── nginx.conf               # Nginx configuration (subrequest to /analyze)
-│   └── logs/                    # Nginx access and error logs
+├── frontend/                   # Dashboard UI
+│   ├── index.html             # Bootstrap 5 layout
+│   ├── style.css              # Custom dark theme
+│   └── script.js              # Chart.js + live polling
 │
-├── scripts/                      # Testing & Utilities
-│   ├── test_zero_day_detection.py # Zero-day attack test suite (20 tests)
-│   ├── verify_waf.py            # Automated WAF test suite
-│   ├── generate_malicious.py    # Generate attack traffic
-│   ├── generate_benign.py       # Generate legitimate traffic
-│   └── fix_false_positive.py    # Correct model (fine-tune on blocked benign requests)
+├── nginx/
+│   ├── nginx.conf             # Proxy + dashboard routing
+│   └── logs/                  # Access & error logs
 │
-├── waf_dashboard.py             # Real-time WAF monitoring dashboard
-├── test_realtime.py             # Interactive real-time testing
-├── docker-compose.yml           # Orchestration (3 services)
-├── README.md                    # This file
-└── dataset_synthetic.txt        # Sample synthetic data
+├── scripts/                    # Testing utilities
+│   ├── test_zero_day_detection.py
+│   ├── generate_malicious.py
+│   └── generate_benign.py
+│
+├── docker-compose.yml
+├── waf_dashboard.py           # CLI dashboard
+└── test_realtime.py           # Interactive tester
 ```
 
-### Key Components Explained
+---
 
-| Component | Purpose | Technology |
-|-----------|---------|-----------|
-| **WAFTransformer** | Binary classifier (benign/malicious) | PyTorch, custom BERT-like architecture |
-| **HttpTokenizer** | Converts HTTP requests to token IDs | HuggingFace Tokenizers library |
-| **FastAPI /analyze** | REST endpoint for real-time classification | FastAPI, async processing |
-| **Nginx subrequest** | Intercepts traffic via HTTP auth module | Nginx auth_request module |
-| **Online Learning** | Retrains model on false positives | PyTorch backprop |
+## 🚀 Getting Started
 
-## 🔄 Model Details
+### Prerequisites
 
-### Architecture
-- **Input**: HTTP request (method + normalized URI)
-- **Tokenizer**: Converts text to token IDs using BPE (Byte Pair Encoding)
-- **Model**: Transformer encoder (12 layers, 768 hidden units) → [CLS] token → Dropout → Dense layers → 2-class softmax
-- **Output**: Confidence scores [benign_prob, malicious_prob]
-- **Decision Thresholds**:
-  - If `malicious_prob > 0.95`: Block (403) - Very confident it's an attack
-  - If `0.85 < malicious_prob < 0.95`: Flag as uncertain, apply combined analysis
-  - If `malicious_prob ≤ 0.85`: Allow (200) - Safe to pass through
+| Requirement | Version |
+|------------|---------|
+| **Git** | Any |
+| **Python** | 3.10+ |
+| **Docker & Docker Compose** | Latest (for Docker mode) |
+| **Disk Space** | ~4 GB (model weights + images) |
 
-### Training Data & Improvements
-The model is trained on **5,000 synthetic HTTP payloads** (5x increase from original):
-
-**Benign Examples:**
-- `GET /api/Users`
-- `GET /rest/products/search?q=apple`
-- `POST /api/Login`
-
-**Malicious Examples (40+ variations):**
-- **SQL Injection**: `' OR 1=1`, `' AND 1=1`, `' OR 'a'='a`, `UNION SELECT`, comments
-- **XSS**: `<script>`, `<img onerror>`, `<svg onload>`, various encodings
-- **Path Traversal**: `../`, `..%2f`, `%2e%2e`, double encoding
-- **Command Injection**: `; command`, `| command`, backtick execution
-- **Encoding Tricks**: `%00`, `%2F`, `%2e`, URL encoding variations
-
-### Zero-Day Improvements
-- **Training**: 5,000 samples (up from 1,000) with adversarial variations
-- **Epochs**: 3 epochs (up from 1) for better convergence
-- **Learning Rate**: Optimized to 1e-5 for stable training
-- **Threshold**: 0.95 (optimized for zero-day detection with minimal false positives)
-- **Detection Rate**: 85%+ on never-before-seen variants
-- **False Positive Rate**: <2% (optimized configuration)
-
-## 🔧 Online Learning (False Positive Correction)
-
-If the WAF blocks a legitimate request, you can fine-tune the model without downtime:
-
-1. **Identify the blocked request** (check Nginx logs):
-   ```bash
-   tail -f nginx/logs/access.log
-   # Look for requests with HTTP 403
-   ```
-
-2. **Run the fix script** to add it to training data and retrain:
-   ```bash
-   python3 scripts/fix_false_positive.py "GET /rest/products/search?q=select"
-   ```
-
-3. **Model retrains** and the new weights are automatically loaded by the WAF service
-
-## 🚀 Advanced Usage
-
-### Retraining the Model
-To train the model from scratch with your own data:
+### Step 1 — Clone
 
 ```bash
-# Generate synthetic training data
-python3 scripts/generate_benign.py
-python3 scripts/generate_malicious.py
-
-# Train the model
-docker-compose exec waf-service python /app/train/train_pipeline.py
+git clone https://github.com/PriscillajospinG/transformer-waf-test.git
+cd transformer-waf-test
 ```
 
-### Viewing Logs
-**WAF service logs:**
+---
+
+## 🐳 Option A: Run with Docker (Recommended)
+
+This is the easiest way — everything runs inside containers.
+
+### 1. Build & Start
+
 ```bash
-docker logs waf-service
+docker-compose up -d --build
 ```
 
-**Nginx access logs (shows blocked requests):**
+First run takes 2–3 minutes (downloads PyTorch, model weights, Juice Shop image).
+
+### 2. Verify
+
 ```bash
-tail -f nginx/logs/access.log
+docker ps
 ```
 
-**Nginx error logs:**
+You should see **3 containers**:
+
+| Container | Status |
+|-----------|--------|
+| `waf-service` | Up — AI engine |
+| `waf-nginx` | Up — Reverse proxy |
+| `juice-shop` | Up — Test application |
+
+### 3. Access
+
+| URL | Description |
+|-----|-------------|
+| `http://localhost:8080/` | Protected application (Juice Shop) |
+| `http://localhost:8080/dashboard/` | **Live WAF Dashboard** |
+| `http://localhost:8000/health` | WAF health check (JSON) |
+
+### 4. Test
+
 ```bash
-tail -f nginx/logs/error.log
+# Safe request → 200 OK
+curl -I "http://localhost:8080/rest/products/search?q=apple"
+
+# SQL injection → 403 Forbidden
+curl -I "http://localhost:8080/rest/products/search?q=' OR 1=1 --"
+
+# XSS → 403 Forbidden
+curl -I "http://localhost:8080/rest/products/search?q=<script>alert(1)</script>"
+
+# Path traversal → 403 Forbidden
+curl -I "http://localhost:8080/../../etc/passwd"
 ```
 
-### Monitoring & Debugging
-**Check WAF health:**
+### 5. Stop
+
 ```bash
-curl http://localhost:8000/
-# Returns: {"status": "running", "model_loaded": true, "type": "SecureBERT"}
+docker-compose down
 ```
 
-**Direct inference test:**
+---
+
+## 💻 Option B: Run Without Docker (Standalone)
+
+Run the WAF backend and dashboard directly on your machine — no Docker needed.
+
+### 1. Install Dependencies
+
 ```bash
-curl -X POST "http://localhost:8000/analyze" \
-  -H "X-Original-Method: GET" \
-  -H "X-Original-URI: /rest/products/search?q=' OR 1=1 --"
+pip install -r waf/requirements.txt
 ```
 
-## 📊 Model Performance
+### 2. Start the WAF Backend
 
-The WAF model achieves (with zero-day protection and optimized threshold 0.95):
+```bash
+cd waf
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-| Metric | Before Enhancement | After Enhancement | Current Status |
-|--------|-------------------|-------------------|----------------|
-| **Known Attack Detection** | 95% | 99% | ✅ 99% |
-| **Zero-Day Detection** | 45% | 85% | ✅ 85% |
-| **False Positive Rate** | <1% | 3% | ✅ <2% (optimized) |
-| **Website Assets Loading** | ❌ Broken | ❌ Issue | ✅ Fixed (0.95 threshold) |
-| **Detection Latency** | <50ms | <100ms | ⚡ 40-80ms |
-| **Training Data** | 1,000 | 5,000 | 📊 5,000 samples |
-| **Training Epochs** | 1 | 3 | 🔄 3 epochs |
+The model downloads automatically on first run (~500 MB).
 
-**Key Achievement**: Blocks real attacks while allowing legitimate traffic (including real-time Socket.io updates)
+### 3. Serve the Dashboard
 
-## ⚠️ Limitations & Considerations
+Open a **second terminal**:
 
-1. **Zero-Day Variants**: While improved to 85%, sophisticated zero-days may still slip through.
-2. **Adversarial Attacks**: Highly targeted attacks can potentially evade multi-layer detection.
-3. **False Positives**: 3% of legitimate requests may be blocked (acceptable trade-off for security).
-4. **Training Data Bias**: Model only catches attacks similar to training data; completely new patterns may fail.
+```bash
+cd frontend
+python3 -m http.server 3000
+```
 
-**Best Practices**: Use this WAF as a *defense-in-depth* layer alongside:
-- Traditional WAFs (ModSecurity, etc.)
-- Secure coding practices  
-- Input validation and sanitization
-- Regular security patches and updates
+### 4. Update API URL
+
+Edit `frontend/script.js` line 2:
+
+```javascript
+// Change:
+const API_BASE = '/api';
+
+// To:
+const API_BASE = 'http://localhost:8000/api';
+```
+
+### 5. Access
+
+| URL | Description |
+|-----|-------------|
+| `http://localhost:3000` | **Dashboard UI** |
+| `http://localhost:8000/health` | WAF health check |
+| `http://localhost:8000/api/stats` | Live statistics (JSON) |
+| `http://localhost:8000/api/logs` | Recent request log (JSON) |
+
+### 6. Test (direct API call)
+
+```bash
+curl -X POST http://localhost:8000/api/test \
+  -H "Content-Type: application/json" \
+  -d '{"url": "/api/Users?q='\'' OR 1=1 --"}'
+```
+
+---
+
+## 🔌 Use as a Plugin for Your Own App
+
+SecureBERT WAF can protect **any** web application. Replace the Juice Shop test app with yours.
+
+### Step 1 — Edit `docker-compose.yml`
+
+Replace the `juice-shop` service with your app:
+
+```yaml
+services:
+  # Replace this with YOUR application
+  my-app:
+    image: your-app-image:latest    # Your Docker image
+    container_name: my-app
+    restart: always
+    networks:
+      - waf-net
+
+  # Keep these unchanged
+  waf-service:
+    build:
+      context: ./waf
+      dockerfile: Dockerfile
+    container_name: waf-service
+    restart: always
+    environment:
+      - MODEL_PATH=/app/model/weights
+    volumes:
+      - ./waf:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - waf-net
+
+  nginx:
+    image: nginx:latest
+    container_name: waf-nginx
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/logs:/var/log/nginx
+      - ./frontend:/usr/share/nginx/html/dashboard:ro
+    depends_on:
+      - my-app
+      - waf-service
+    networks:
+      - waf-net
+
+networks:
+  waf-net:
+    driver: bridge
+```
+
+### Step 2 — Update `nginx/nginx.conf`
+
+Change the upstream target to point to your app:
+
+```nginx
+upstream target_app {
+    server my-app:3000;     # ← Your app's container name and port
+}
+```
+
+### Step 3 — Deploy
+
+```bash
+docker-compose up -d --build
+```
+
+Your app is now protected at `http://localhost:8080/` and the dashboard is live at `http://localhost:8080/dashboard/`.
+
+---
+
+## 📊 Live Dashboard
+
+The built-in dashboard provides real-time WAF monitoring:
+
+| Feature | Description |
+|---------|-------------|
+| **Stat Cards** | Total requests, blocked, allowed, block rate |
+| **Doughnut Chart** | Attack type distribution (Chart.js) |
+| **Timeline Chart** | Blocked vs. allowed over time (Chart.js) |
+| **Attack Tester** | Send test payloads to the WAF from the UI |
+| **Progress Bars** | Breakdown by SQLi, XSS, path traversal, encoding |
+| **Live Log Table** | Scrollable table with recent requests |
+
+**Tech Stack:** HTML5 + CSS3 + JavaScript + Bootstrap 5 + Chart.js
+
+---
+
+## 🛡️ Detection Layers
+
+### Layer 1 — Rule-Based (1 ms)
+Keyword matching for 40+ attack signatures: `union`, `select`, `<script>`, `../`, etc.
+
+### Layer 2 — AI / BERT (40 ms)
+Fine-tuned Transformer that understands the **semantic meaning** of HTTP requests.
+
+### Layer 3 — Uncertainty Detection
+Flags borderline predictions (confidence 0.70–0.80) for extra checks.
+
+### Layer 4 — Combined Decision
+Requires agreement between rule-based and AI layers before blocking.
+
+**Result:** 85%+ zero-day detection, <3% false positive rate.
+
+---
+
+## ⚙️ Configuration
+
+Key thresholds in `waf/app/main.py`:
+
+```python
+AI_CONFIDENCE_THRESHOLD = 0.95    # Block if malicious_prob > this
+UNCERTAINTY_THRESHOLD   = 0.85    # Flag as uncertain above this
+```
+
+| Scenario | Adjust |
+|----------|--------|
+| Too many false positives | Raise `AI_CONFIDENCE_THRESHOLD` to `0.98` |
+| Attacks getting through | Lower `AI_CONFIDENCE_THRESHOLD` to `0.90` |
+
+After changing thresholds:
+
+```bash
+# Docker
+docker-compose restart waf-service
+
+# Standalone
+# Just save the file — uvicorn --reload picks it up automatically
+```
+
+---
+
+## 🔄 Online Learning (Fix False Positives)
+
+If the WAF blocks a legitimate request:
+
+```bash
+# 1. Find blocked request
+tail -f nginx/logs/access.log | grep 403
+
+# 2. Correct the model
+python3 scripts/fix_false_positive.py "GET /your/legitimate/path"
+
+# 3. Restart
+docker-compose restart waf-service
+```
+
+---
+
+## 🧪 Test Suites
+
+| Script | Purpose | Command |
+|--------|---------|---------|
+| **CLI Dashboard** | Real-time detection across all 4 layers | `python3 waf_dashboard.py` |
+| **Interactive Tester** | Menu-driven testing | `python3 test_realtime.py` |
+| **Zero-Day Suite** | Automated 20+ test cases | `python3 scripts/test_zero_day_detection.py` |
+| **Generate Attacks** | Continuous malicious traffic | `python3 scripts/generate_malicious.py` |
+
+---
+
+## 📈 Performance
+
+| Metric | Value |
+|--------|-------|
+| Known attack detection | 99% |
+| Zero-day detection | 85%+ |
+| False positive rate | <2% |
+| Inference latency | 40–80 ms |
+| Training data | 5,000 samples |
+
+---
 
 ## 🔍 Troubleshooting
 
-### Services won't start
-```bash
-# Check Docker daemon is running
-docker ps
-
-# Check logs for errors
-docker-compose logs
-```
-
-### WAF returns 200 for all requests
-```bash
-# Model might not be loaded. Check:
-docker logs waf-service
-
-# Verify model file exists:
-ls -la waf/model/weights/waf_model.pth
-```
-
-### High false positive rate (blocking too many legitimate requests)
-1. **Increase the AI confidence threshold** in `waf/app/main.py`:
-```python
-AI_CONFIDENCE_THRESHOLD = 0.98  # More conservative (current: 0.95)
-UNCERTAINTY_THRESHOLD = 0.88
-```
-
-2. **Restart the WAF service**:
-```bash
-docker-compose restart waf-service
-```
-
-3. **Test with dashboard**:
-```bash
-python3 waf_dashboard.py
-```
-
-### Missing legitimate attacks (false negatives)
-1. **Decrease the AI confidence threshold** in `waf/app/main.py`:
-```python
-AI_CONFIDENCE_THRESHOLD = 0.90  # More aggressive (current: 0.95)
-UNCERTAINTY_THRESHOLD = 0.80
-```
-
-2. **Alternatively, use online learning**:
-```bash
-python3 scripts/fix_false_positive.py "GET /missed/attack?q=malicious"
-```
-
-### Port 8080 already in use
-```bash
-# Change port in docker-compose.yml:
-# ports:
-#   - "8081:80"  # Use 8081 instead
-
-docker-compose down
-docker-compose up -d --build
-```
-
-### Website assets not loading (CSS, JavaScript, Socket.io broken)
-If the website looks broken or has missing assets:
-1. **Increase the AI confidence threshold** in `waf/app/main.py`:
-```python
-AI_CONFIDENCE_THRESHOLD = 0.95  # Reduces false positives on assets
-UNCERTAINTY_THRESHOLD = 0.85
-```
-2. **Restart WAF service**:
-```bash
-docker-compose restart waf-service
-```
-3. **Verify access logs**:
-```bash
-tail -f nginx/logs/access.log | grep "403"
-```
-Socket.io requests (for real-time updates) should now be 200 OK.
-
-### Accessing the application after starting
-- **WAF Gateway + Juice Shop**: http://localhost:8080 (public access via Nginx, protected by WAF)
-- **WAF Health Check**: http://localhost:8000/health (direct access, not through Nginx)
-- **Juice Shop Directly** (bypass WAF - NOT RECOMMENDED): http://localhost:3000 (internal only)
-
-## 🤝 Contributing
-Feel free to fork this project and submit Pull Requests! We are looking for:
-- More diverse training datasets
-- Support for other architectures (e.g., LSTM, CNN, TCN)
-- Dashboard for visualizing blocked attacks and model metrics
-- Integration with WAF management platforms (AWS WAF, Cloudflare, etc.)
-- Adversarial robustness improvements
-
-## � Quick Reference Cheat Sheet
-
-| Task | Command | Expected Result |
-|------|---------|-----------------|
-| **Start WAF** | `docker-compose up -d --build` | 3 containers running |
-| **Check Status** | `docker-compose ps` | All containers "Up" |
-| **Live Dashboard** | `python3 waf_dashboard.py` | 6/6 tests pass, 100% success |
-| **Full Test Suite** | `python3 scripts/test_zero_day_detection.py` | 17/20 tests pass, 85% success |
-| **View Logs** | `docker-compose logs -f waf-service` | Real-time detection logs |
-| **Access Website** | `curl http://localhost:8080/` | 200 OK with full website |
-| **Test Attack** | `curl "http://localhost:8080/search?q=%27%20OR%201=1"` | 403 Forbidden - Attack blocked |
-| **Stop WAF** | `docker-compose down` | All containers stopped |
-| **Restart WAF** | `docker-compose restart waf-service` | WAF reloads with new settings |
-| **Fix False Positive** | `python3 scripts/fix_false_positive.py "GET /path"` | Model retrains automatically |
-
-## 🎯 Common Workflows
-
-### Workflow 1: Quick Test (5 minutes)
-```bash
-docker-compose up -d --build   # Start
-sleep 30                        # Wait for startup
-python3 waf_dashboard.py        # Test & view results
-docker-compose down             # Stop
-```
-
-### Workflow 2: Continuous Monitoring (Development)
-```bash
-# Terminal 1: Start services
-docker-compose up -d --build
-
-# Terminal 2: Watch logs in real-time
-docker-compose logs -f waf-service
-
-# Terminal 3: Run tests
-python3 test_realtime.py
-```
-
-### Workflow 3: Fix False Positive (When WAF blocks legitimate traffic)
-```bash
-# 1. Find the blocked request in logs
-tail -f nginx/logs/access.log   # Look for "403"
-
-# 2. Fix it (model retrains automatically)
-python3 scripts/fix_false_positive.py "GET /your/path"
-
-# 3. Restart WAF to load new model
-docker-compose restart waf-service
-
-# 4. Verify it works now
-curl -I "http://localhost:8080/your/path"  # Should be 200 OK
-```
-
-### Workflow 4: Adjust Sensitivity
-```bash
-# Edit threshold in waf/app/main.py
-nano waf/app/main.py
-
-# Change:
-# AI_CONFIDENCE_THRESHOLD = 0.95  (more conservative, fewer false positives)
-# AI_CONFIDENCE_THRESHOLD = 0.90  (more aggressive, catches more attacks)
-
-# Rebuild and restart
-docker-compose build
-docker-compose restart waf-service
-```
-
-## 🚨 Emergency Checklist
-
-| Issue | Solution | Verification |
-|-------|----------|--------------|
-| Website won't load | Check Docker logs: `docker-compose logs` | `curl http://localhost:8080/` returns 200 |
-| Socket.io broken (real-time down) | Increase threshold to 0.95 in main.py | Website looks complete with animations |
-| Attacks getting through | Decrease threshold to 0.90 in main.py | Test: `curl "http://localhost:8080/?q=%27%20OR"` returns 403 |
-| High false positives | Check nginx logs: `tail -f nginx/logs/access.log \| grep 403` | Legitimate requests are 200 OK |
-| Model not loaded | Check: `docker logs waf-service \| grep "ERROR"` | `curl http://localhost:8000/health` returns running |
-
-## �📚 References
-- BERT: [Attention is All You Need](https://arxiv.org/abs/1706.03762)
-- HuggingFace Transformers: https://huggingface.co/docs/transformers/
-- OWASP Top 10: https://owasp.org/www-project-top-ten/
-- WAF Testing: https://owasp.org/www-community/attacks/
-
-## 📄 License
-MIT License - Feel free to use for educational and commercial purposes
+| Problem | Solution |
+|---------|----------|
+| Containers won't start | `docker-compose up -d --build` — wait 3 min |
+| Port 8080 in use | Change port in `docker-compose.yml` → `"8081:80"` |
+| WAF returns 200 for attacks | Check model loaded: `docker logs waf-service` |
+| Dashboard not loading | Verify `frontend/` volume mount in `docker-compose.yml` |
+| Assets broken on target app | Raise `AI_CONFIDENCE_THRESHOLD` to `0.98` |
+| Model not downloading | Check internet — first run needs ~500 MB |
 
 ---
-**Disclaimer**: This project is for educational and defensive purposes only. Use responsibly and only on systems you own or have explicit permission to test.
+
+## 📚 API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/analyze` | GET | Nginx subrequest — returns 200 (allow) or 403 (block) |
+| `/api/stats` | GET | Aggregated stats (total, blocked, allowed, attack types) |
+| `/api/logs` | GET | Recent request log (last 200 entries) |
+| `/api/test` | POST | Test a URL: `{"url": "/path?q=payload"}` |
+| `/health` | GET | Service health and model status |
+
+---
+
+## 🤝 Contributing
+
+PRs welcome! Areas of interest:
+- More diverse training datasets
+- Support for LSTM / CNN architectures
+- Integration with AWS WAF, Cloudflare, etc.
+- Adversarial robustness improvements
+
+## 📄 License
+
+MIT License — free for educational and commercial use.
+
+---
+
+> **Disclaimer:** This project is for educational and defensive purposes only. Use responsibly and only on systems you own or have explicit permission to test.
