@@ -155,23 +155,23 @@
                         <!-- Quick Tests -->
                         <div class="d-flex flex-wrap align-items-center gap-2">
                             <span class="text-secondary small fw-medium">Quick Tests:</span>
-                            <button class="btn btn-outline-success btn-sm"
-                                onclick="quickTest('/rest/products/search?q=apple')">
+                            <button class="btn btn-outline-success btn-sm quick-test-btn"
+                                data-url="/rest/products/search?q=apple">
                                 <i class="bi bi-check-circle me-1"></i>Safe Search
                             </button>
-                            <button class="btn btn-outline-danger btn-sm"
-                                onclick="quickTest(&quot;/api/Users?q=' OR 1=1 --&quot;)">
+                            <button class="btn btn-outline-danger btn-sm quick-test-btn"
+                                data-url="/api/Users?q=' OR 1=1 --">
                                 <i class="bi bi-database me-1"></i>SQLi
                             </button>
-                            <button class="btn btn-outline-danger btn-sm"
-                                onclick="quickTest(&quot;/search?q=&lt;script&gt;alert(1)&lt;/script&gt;&quot;)">
+                            <button class="btn btn-outline-danger btn-sm quick-test-btn"
+                                data-url="/search?q=&lt;script&gt;alert(1)&lt;/script&gt;">
                                 <i class="bi bi-code-slash me-1"></i>XSS
                             </button>
-                            <button class="btn btn-outline-danger btn-sm" onclick="quickTest('/../../etc/passwd')">
+                            <button class="btn btn-outline-danger btn-sm quick-test-btn" data-url="/../../etc/passwd">
                                 <i class="bi bi-folder2-open me-1"></i>Path Traversal
                             </button>
-                            <button class="btn btn-outline-danger btn-sm"
-                                onclick="quickTest('/admin?cmd=cat+/etc/shadow')">
+                            <button class="btn btn-outline-danger btn-sm quick-test-btn"
+                                data-url="/admin?cmd=cat+/etc/shadow">
                                 <i class="bi bi-terminal me-1"></i>Command Inj
                             </button>
                         </div>
