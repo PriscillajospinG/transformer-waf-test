@@ -9,6 +9,7 @@ import re
 import time
 from collections import deque
 from datetime import datetime
+import pytz
 
 # Ensure we can import from sibling directories
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -65,8 +66,13 @@ def classify_attack(uri, keywords):
 
 def log_request(ip, uri, method, status, reason, prob=0.0):
     """Log a request for the dashboard"""
+    # Get current time in Asia/Kolkata timezone
+    kolkata_tz = pytz.timezone('Asia/Kolkata')
+    kolkata_time = datetime.now(kolkata_tz)
+    timestamp_str = kolkata_time.strftime("%H:%M:%S")
+    
     entry = {
-        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "timestamp": timestamp_str,
         "ip": ip,
         "method": method,
         "uri": uri[:120],

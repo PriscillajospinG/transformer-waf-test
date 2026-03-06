@@ -8,6 +8,7 @@ services:
     restart: always
     environment:
       - NODE_ENV=safe # We want some logging
+      - TZ=Asia/Kolkata
     networks:
       - waf-net
 
@@ -20,6 +21,7 @@ services:
     restart: always
     environment:
       - MODEL_PATH=/app/model/weights
+      - TZ=Asia/Kolkata
     volumes:
       - ./waf:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -31,6 +33,8 @@ services:
     image: nginx:latest
     container_name: waf-nginx
     restart: always
+    environment:
+      - TZ=Asia/Kolkata
     ports:
       - "8080:80"
     volumes:
