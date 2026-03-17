@@ -230,25 +230,86 @@ curl -X POST http://localhost:8000/api/test \
 
 ---
 
-## 🔌 Use as a Plugin for Your Own App
+## 🔌 Protect Your Own Website
 
-SecureBERT WAF can protect **any** web application. Replace the Juice Shop test app with yours.
+This is the main use case! Replace Juice Shop with your actual web application. The WAF works with **any** web app — no code changes required.
 
-### Step 1 — Edit `docker-compose.yml`
+### Architecture Overview
 
-Replace the `juice-shop` service with your app:
+```
+Users (Internet)
+    ↓
+Nginx Reverse Proxy (localhost:8080)
+    ↓
+WAF Service (AI Analysis)
+    ├─ Rule-based Detection
+    ├─ BERT/SecureBERT Neural Network
+    ├─ Uncertainty Detection
+    └─ Combined Decision
+    ↓
+Your Web App (whatever you want to protect)
+    ↓
+Response → Dashboard Logs & Statistics
+```
+
+All traffic flows through the WAF before reaching your app. Safe requests: ✅ Allow. Suspicious requests: 🛑 Block.
+
+---
+
+### Simple Setup (3 Easy Steps)
+
+#### **Step 1: Prepare Your Application**
+
+Your app must be accessible **inside Docker** as a service. You have 3 options:
+
+**Option A: Docker Image** (Recommended)
+```bash
+# If your app has a Dockerfile
+docker build -t my-app:latest .
+```
+
+**Option B: Public Docker Image**
+```bash
+# Use an existing image from Docker Hub
+# Examples: node:18, python:3.11, nginx:latest, etc.
+```
+
+**Option C: Running on Host Machine**
+```bash
+# If your app runs locally (not Docker)
+# You'll use host.docker.internal instead
+# Example: my-nodejs-app listening on localhost:3000
+```
+
+---
+
+#### **Step 2: Update docker-compose.yml**
+
+Open `docker-compose.yml` and replace the `juice-shop` service:
 
 ```yaml
+version: '3.8'
+
 services:
-  # Replace this with YOUR application
-  my-app:
-    image: your-app-image:latest    # Your Docker image
-    container_name: my-app
+  # ========== REPLACE THIS SECTION ==========
+  my-website:
+    image: my-app:latest              # ← Your Docker image name
+    container_name: my-website        # ← Unique container name
     restart: always
+    ports:
+      - "3000:3000"                   # ← Your app's internal port
+    environment:
+      - NODE_ENV=production           # ← Your app's env vars (if any)
+      - DATABASE_URL=...              # ← Add any needed config
+      - TZ=Asia/Kolkata               # ← Keep this for timezone
     networks:
       - waf-net
+    # If your app needs volumes:
+    # volumes:
+    #   - ./data:/app/data
+  # ========== END REPLACEMENT ==========
 
-  # Keep these unchanged
+  # ========== KEEP THESE AS-IS ==========
   waf-service:
     build:
       context: ./waf
@@ -257,6 +318,7 @@ services:
     restart: always
     environment:
       - MODEL_PATH=/app/model/weights
+      - TZ=Asia/Kolkata
     volumes:
       - ./waf:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -267,14 +329,16 @@ services:
     image: nginx:latest
     container_name: waf-nginx
     restart: always
+    environment:
+      - TZ=Asia/Kolkata
     ports:
-      - "8080:80"
+      - "8080:80"                     # ← WAF exposed on 8080
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/logs:/var/log/nginx
       - ./frontend:/usr/share/nginx/html/dashboard:ro
     depends_on:
-      - my-app
+      - my-website                    # ← Update to match your service name
       - waf-service
     networks:
       - waf-net
@@ -284,20 +348,283 @@ networks:
     driver: bridge
 ```
 
-### Step 2 — Update `nginx/nginx.conf`
+**Key Changes:**
+- `image`: Replace with your app's Docker image
+- `container_name`: Use a unique name (e.g., `my-website`, `api-server`)
+- `ports`: Change to match your app's port (e.g., `3000:3000`)
+- `environment`: Add env vars your app needs
+- `depends_on`: Update to your service name
+- Keep all `waf-service` and `nginx` sections **unchanged**
 
-Change the upstream target to point to your app:
+---
+
+#### **Step 3: Update nginx/nginx.conf**
+
+Edit `nginx/nginx.conf` line ~22-24:
 
 ```nginx
-upstream target_app {
-    server my-app:3000;     # ← Your app's container name and port
+# BEFORE:
+upstream juice_shop {
+    server juice-shop:3000;
+}
+
+# AFTER:
+upstream my_app {
+    server my-website:3000;      # ← Match your service name & internal port
 }
 ```
 
-### Step 3 — Deploy
+Then update lines where `juice_shop` is referenced (usually 3-4 places):
 
+```nginx
+# Find and replace these lines:
+
+# Line ~55: Static assets
+location ~* \.(css|js|...)$ {
+    proxy_pass http://my_app;    # ← Changed from juice_shop
+}
+
+# Line ~63: Main app proxy
+location / {
+    auth_request /_waf_check;
+    proxy_pass http://my_app;    # ← Changed from juice_shop
+}
+```
+
+**Quick Find/Replace:**
+```bash
+sed -i 's/juice_shop/my_app/g' nginx/nginx.conf
+sed -i 's/juice-shop:3000/my-website:3000/g' nginx/nginx.conf
+```
+
+---
+
+### Example: Protecting a Node.js App
+
+**Your app structure:**
+```
+my-node-app/
+├── Dockerfile
+├── index.js
+├── server.js
+└── package.json
+```
+
+**Your `docker-compose.yml`:**
+```yaml
+services:
+  nodejs-backend:
+    image: my-node-app:latest
+    container_name: nodejs-backend
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DB_HOST=mongo
+      - TZ=Asia/Kolkata
+    networks:
+      - waf-net
+
+  # ... waf-service and nginx below, unchanged
+```
+
+**Your `nginx/nginx.conf`:**
+```nginx
+upstream nodejs_backend {
+    server nodejs-backend:4000;
+}
+
+# ... in server block:
+location ~* \.(css|js|...)$ {
+    proxy_pass http://nodejs_backend;
+}
+
+location / {
+    auth_request /_waf_check;
+    proxy_pass http://nodejs_backend;
+}
+```
+
+**Deploy:**
 ```bash
 docker-compose up -d --build
+```
+
+Access your protected app at: **`http://localhost:8080/`**  
+Monitor with dashboard: **`http://localhost:8080/dashboard/`**
+
+---
+
+### Example: Protecting a Python Flask App
+
+**Your `Dockerfile`:**
+```dockerfile
+FROM python:3.11
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 5000
+CMD ["python", "app.py"]
+```
+
+**Your `docker-compose.yml`:**
+```yaml
+services:
+  flask-app:
+    build: ./my-flask-app
+    container_name: flask-app
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - TZ=Asia/Kolkata
+    networks:
+      - waf-net
+
+  # ... waf-service and nginx below
+```
+
+**Your `nginx/nginx.conf`:**
+```nginx
+upstream flask_backend {
+    server flask-app:5000;
+}
+
+# ... use flask_backend in location blocks
+```
+
+---
+
+### Example: Protecting an Existing Remote App
+
+If your app already runs on a server (not Docker), you can forward it through Docker:
+
+**docker-compose.yml:**
+```yaml
+services:
+  external-app:
+    image: nginx:alpine
+    container_name: external-app
+    restart: always
+    volumes:
+      - ./external-app-proxy.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - waf-net
+
+  # ... waf is then updated to proxy to this
+```
+
+**external-app-proxy.conf:**
+```nginx
+events {}
+http {
+    server {
+        listen 8001;
+        location / {
+            # Forward to your remote server
+            proxy_pass http://your-server.com:8080;
+            proxy_set_header Host $host;
+        }
+    }
+}
+```
+
+---
+
+### Deploy & Test
+
+```bash
+# Build and start all services
+docker-compose up -d --build
+
+# Wait for containers to start (30-60 seconds)
+sleep 30
+
+# Verify containers running
+docker ps
+
+# Check WAF is working
+curl -s http://localhost:8080/api/stats | jq .
+
+# Access your protected app
+open http://localhost:8080/
+
+# View live dashboard
+open http://localhost:8080/dashboard/
+
+# Test with a malicious request
+curl "http://localhost:8080/api/search?q=' OR 1=1 --"
+# Should see 403 Forbidden response
+```
+
+---
+
+### Verify It's Working
+
+**Dashboard Indicators:**
+- ✅ "Total Requests" incrementing
+- ✅ "Blocked" count increasing (if sending attacks)
+- ✅ Real-time chart updates
+- ✅ Request logs showing timestamp, IP, URI, status
+
+**Manual Test:**
+```bash
+# This should work (200 OK)
+curl -I http://localhost:8080/
+
+# This should be blocked (403 Forbidden)
+curl -I "http://localhost:8080/?search=<script>alert(1)</script>"
+
+# Check logs
+curl -s http://localhost:8080/api/logs | jq .
+```
+
+---
+
+### Common Issues & Fixes
+
+| Issue | Solution |
+|-------|----------|
+| `502 Bad Gateway` | WAF service still starting. Wait 60s and retry. |
+| `Connection refused` | App container isn't running. Check `docker logs my-website` |
+| `nginx: [emerg] host not found` | Service name in `nginx.conf` doesn't match `docker-compose.yml`. Must be **exact same name**. |
+| Port already in use | Change `ports: - "8080:80"` to `"8081:80"` or kill existing process. |
+| App works without WAF but not through it | Check `nginx.conf` proxy headers are correct. Some apps need `X-Forwarded-*` headers. |
+| Dashboard shows 0 requests | App isn't receiving traffic through nginx. Try `curl http://localhost:8080/` to generate traffic. |
+
+---
+
+### How the WAF Works
+
+**Every request goes through this pipeline:**
+
+1. **Nginx intercepts** → Checks request with WAF service
+2. **WAF Analysis** (40-80ms):
+   - ✅ **Rule-based layer**: Matches against known patterns
+   - ✅ **AI layer**: BERT model predicts benign/malicious probability
+   - ✅ **Uncertainty layer**: Flags borderline cases for review
+   - ✅ **Combined decision**: Aggregates all layers
+3. **Decision**:
+   - ✅ Safe? → `200 OK` → Forward to your app
+   - 🛑 Attack? → `403 Forbidden` → Block request
+4. **Logging**: All decisions recorded → Dashboard updates in real-time
+
+**Logs to dashboard:**
+- Request timestamp
+- Client IP
+- HTTP method & URI
+- Block/Allow status
+- Attack reason (if blocked)
+- Malicious probability (0.0 = safe, 1.0 = attack)
+
+---
+
+
 ```
 
 Your app is now protected at `http://localhost:8080/` and the dashboard is live at `http://localhost:8080/dashboard/`.
