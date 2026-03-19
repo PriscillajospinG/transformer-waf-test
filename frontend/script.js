@@ -1,6 +1,14 @@
 // ===== CONFIG =====
 const API_BASE = '/api';
 const REFRESH_MS = 2000;
+const API_TOKEN = new URLSearchParams(window.location.search).get('token')
+    || localStorage.getItem('api_token')
+    || 'secure-api-token-change-me';
+
+const API_HEADERS = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${API_TOKEN}`
+};
 
 // ===== CLOCK =====
 function updateClock() {
@@ -103,7 +111,11 @@ const timelineChart = new Chart(timelineCtx, {
 // ===== FETCH STATS =====
 async function fetchStats() {
     try {
-        const res = await fetch(`${API_BASE}/stats`);
+        const res = await fetch(`${API_BASE}/stats`, { headers: API_HEADERS });
+        if (res.status === 403) {
+            console.error('API token rejected. Use ?token=... or set localStorage api_token');
+            return;
+        }
         if (!res.ok) return;
         const data = await res.json();
 
@@ -174,12 +186,23 @@ function animateValue(id, newVal) {
 // ===== FETCH LOGS =====
 async function fetchLogs() {
     try {
-        const res = await fetch(`${API_BASE}/logs`);
+        const res = await fetch(`${API_BASE}/logs`, { headers: API_HEADERS });
+        if (res.status === 403) return;
         if (!res.ok) return;
-        const logs = await res.json();
+        const data = await res.json();
+
+        // Handle new API format: {logs, debug}
+        const logs = Array.isArray(data) ? data : (data.logs || []);
+        const debug = data.debug || {};
 
         const tbody = document.getElementById('log-body');
-        document.getElementById('log-count').textContent = logs.length + ' entries';
+        
+        // Display log count with filtering info
+        let countText = logs.length + ' entries';
+        if (debug.total_stored !== undefined) {
+            countText += ` <span class="text-secondary small">(${debug.total_stored} stored, ${debug.filtered_out || 0} filtered)</span>`;
+        }
+        document.getElementById('log-count').innerHTML = countText;
 
         if (logs.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" class="text-center text-secondary py-5 fst-italic">
@@ -224,9 +247,12 @@ async function testUrl() {
     try {
         const res = await fetch(`${API_BASE}/test`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: API_HEADERS,
             body: JSON.stringify({ url })
         });
+        if (res.status === 403) {
+            throw new Error('Forbidden: invalid API token');
+        }
         const data = await res.json();
         const isBlocked = data.status === 'blocked';
 

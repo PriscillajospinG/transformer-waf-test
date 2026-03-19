@@ -1,0 +1,115 @@
+worker_processes 1;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    resolver 127.0.0.11 ipv6=off valid=30s;
+
+    log_format waf_json escape=json
+        '{"ts":"$time_iso8601","remote_addr":"$remote_addr","request":"$request",'
+        '"status":$status,"bytes":$body_bytes_sent,"referer":"$http_referer",'
+        '"user_agent":"$http_user_agent","upstream":"$upstream_addr",'
+        '"request_time":$request_time,"upstream_time":"$upstream_response_time"}';
+
+    access_log /var/log/nginx/access.log waf_json;
+    error_log /var/log/nginx/error.log warn;
+
+    sendfile on;
+    keepalive_timeout 65;
+
+    client_body_timeout 10s;
+    client_header_timeout 10s;
+    send_timeout 10s;
+
+    client_max_body_size 10m;
+    client_body_buffer_size 128k;
+
+    limit_req_zone $binary_remote_addr zone=general:10m rate=100r/s;
+    limit_req_zone $binary_remote_addr zone=api:10m rate=15r/s;
+
+    server {
+        listen 80;
+        server_name _;
+
+        set $app_upstream http://${APP_HOST}:${APP_PORT};
+        set $waf_upstream http://waf-service:8000;
+
+        location ^~ /dashboard/ {
+            alias /usr/share/nginx/html/dashboard/;
+            index index.html;
+            try_files $uri $uri/ =404;
+            expires 1d;
+            add_header Cache-Control "public, immutable";
+        }
+
+        location = /dashboard {
+            return 301 /dashboard/;
+        }
+
+        # Dashboard API to WAF service.
+        location /api/ {
+            limit_req zone=api burst=20 nodelay;
+            proxy_pass $waf_upstream;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Authorization $http_authorization;
+            proxy_connect_timeout 2s;
+            proxy_send_timeout 5s;
+            proxy_read_timeout 15s;
+        }
+
+        # ALL app traffic must pass WAF check.
+        location / {
+            limit_req zone=general burst=50 nodelay;
+            set $waf_original_uri $uri;
+            set $waf_original_args $args;
+            set $waf_original_method $request_method;
+            auth_request /_waf_check;
+            error_page 403 /blocked.html;
+
+            proxy_pass $app_upstream;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 20s;
+            proxy_read_timeout 30s;
+        }
+
+        location = /_waf_check {
+            internal;
+            proxy_intercept_errors on;
+            error_page 500 502 503 504 =200 /_waf_allow;
+
+            proxy_pass $waf_upstream/analyze;
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length "";
+            proxy_set_header X-Original-URI $waf_original_uri;
+            proxy_set_header X-Original-Query $waf_original_args;
+            proxy_set_header X-Original-Request-URI $waf_original_uri$is_args$waf_original_args;
+            proxy_set_header X-Original-Method $waf_original_method;
+            proxy_set_header X-Original-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_connect_timeout 2s;
+            proxy_send_timeout 5s;
+            proxy_read_timeout 10s;
+        }
+
+        location = /_waf_allow {
+            internal;
+            return 204;
+        }
+
+        location = /blocked.html {
+            internal;
+            default_type text/plain;
+            return 403 '${BLOCK_MESSAGE}';
+        }
+    }
+}

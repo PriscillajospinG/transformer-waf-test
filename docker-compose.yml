@@ -1,49 +1,79 @@
-version: '3.8'
-
 services:
-  # The vulnerable application
-  juice-shop:
-    image: bkimminich/juice-shop
-    container_name: juice-shop
-    restart: always
+  # Optional sample backend app. For plug-and-play, set APP_IMAGE or point APP_HOST
+  # to your own container on this network.
+  backend-app:
+    image: ${APP_IMAGE:-bkimminich/juice-shop}
+    container_name: ${APP_HOST:-backend-app}
+    restart: on-failure:5
     environment:
-      - NODE_ENV=safe # We want some logging
-      - TZ=Asia/Kolkata
+      - TZ=${TZ:-UTC}
     networks:
       - waf-net
 
-  # The AI WAF Service
   waf-service:
     build:
       context: ./waf
       dockerfile: Dockerfile
     container_name: waf-service
-    restart: always
+    restart: on-failure:5
     environment:
       - MODEL_PATH=/app/model/weights
-      - TZ=Asia/Kolkata
+      - TZ=${TZ:-UTC}
+      - API_TOKEN=${API_TOKEN:-secure-api-token-change-me}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:8080}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TORCHINDUCTOR_CACHE_DIR=/tmp/torch_cache
+      - TORCH_HOME=/tmp/torch_home
+      - TORCH_COMPILE_DISABLE=1
+      - HOME=/home/wafservice
     volumes:
-      - ./waf:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - type: bind
+        source: ./waf
+        target: /app
+        read_only: true
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import requests; requests.get('http://localhost:8000/').raise_for_status()"]
+      interval: 20s
+      timeout: 10s
+      retries: 6
+      start_period: 120s
     networks:
       - waf-net
 
-  # Nginx Reverse Proxy
-  nginx:
+  waf-nginx:
     image: nginx:latest
     container_name: waf-nginx
-    restart: always
+    restart: on-failure:5
     environment:
-      - TZ=Asia/Kolkata
+      - TZ=${TZ:-UTC}
+      - APP_HOST=${APP_HOST:-backend-app}
+      - APP_PORT=${APP_PORT:-3000}
+      - BLOCK_MESSAGE=${BLOCK_MESSAGE:-Request blocked by SecureBERT WAF}
     ports:
-      - "8080:80"
+      - "${WAF_PORT:-8080}:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       - ./nginx/logs:/var/log/nginx
       - ./frontend:/usr/share/nginx/html/dashboard:ro
     depends_on:
-      - juice-shop
-      - waf-service
+      waf-service:
+        condition: service_healthy
+      backend-app:
+        condition: service_started
+    command: /bin/sh -c "envsubst '$$APP_HOST $$APP_PORT $$BLOCK_MESSAGE' < /etc/nginx/templates/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
     networks:
       - waf-net
 
