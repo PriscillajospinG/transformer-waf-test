@@ -51,9 +51,10 @@ http {
             return 301 /dashboard/;
         }
 
-        # Dashboard API to WAF service.
-        location /api/ {
+        # Dashboard API to WAF service (avoid conflict with protected app /api/* routes).
+        location /waf-api/ {
             limit_req zone=api burst=20 nodelay;
+            rewrite ^/waf-api/(.*)$ /api/$1 break;
             proxy_pass $waf_upstream;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -77,6 +78,8 @@ http {
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_pass_request_body on;
+            proxy_set_header Content-Length $content_length;
             proxy_connect_timeout 5s;
             proxy_send_timeout 20s;
             proxy_read_timeout 30s;
@@ -88,8 +91,8 @@ http {
             error_page 500 502 503 504 =200 /_waf_allow;
 
             proxy_pass $waf_upstream/analyze;
+            # Keep auth subrequest header-only and avoid touching original request body.
             proxy_pass_request_body off;
-            proxy_set_header Content-Length "";
             proxy_set_header X-Original-URI $waf_original_uri;
             proxy_set_header X-Original-Query $waf_original_args;
             proxy_set_header X-Original-Request-URI $waf_original_uri$is_args$waf_original_args;

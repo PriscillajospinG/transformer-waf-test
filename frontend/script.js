@@ -1,5 +1,5 @@
 // ===== CONFIG =====
-const API_BASE = '/api';
+const API_BASE = '/waf-api';
 const REFRESH_MS = 2000;
 const API_TOKEN = new URLSearchParams(window.location.search).get('token')
     || localStorage.getItem('api_token')
