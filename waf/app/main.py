@@ -522,39 +522,10 @@ def get_stats(request: Request):
 
 @app.get("/api/logs")
 def get_logs(request: Request):
-    """
-    Return filtered logs suitable for frontend dashboard display.
-    - Applies should_display_log filter to all_request_log
-    - Returns last 50-100 meaningful logs
-    - Includes debug info: total stored vs returned
-    """
     verify_api_token(request)
-    
+
     with stats_lock:
-        total_stored = len(all_request_log)
-        
-        # Filter logs and reverse to show most recent first
-        filtered_logs = [
-            log for log in all_request_log 
-            if should_display_log(log)
-        ]
-        
-        # Limit to last 100 meaningful logs for performance
-        displayed_logs = filtered_logs[:100]
-        
-        # Calculate filtering stats
-        filtered_count = len(filtered_logs)
-        filtered_out = total_stored - filtered_count
-        
-        return {
-            "logs": displayed_logs,
-            "debug": {
-                "total_stored": total_stored,
-                "total_displayed": len(displayed_logs),
-                "filtered_out": filtered_out,
-                "filter_ratio": round((filtered_out / total_stored * 100), 1) if total_stored > 0 else 0.0,
-            }
-        }
+        return list(all_request_log)
 
 
 @app.post("/api/test", response_model=DecisionResponse)
