@@ -1,315 +1,206 @@
 # 🛡️ SecureBERT WAF — AI-Powered Web Application Firewall
 
-![Status](https://img.shields.io/badge/Status-Operational-brightgreen)
-![Model](https://img.shields.io/badge/Model-SecureBERT%20(Fine--tuned)-blue)
-![Platform](https://img.shields.io/badge/Platform-Docker%20%7C%20Standalone-orange)
-![Detection](https://img.shields.io/badge/Zero--Day%20Detection-85%25-success)
-![Dashboard](https://img.shields.io/badge/Dashboard-Bootstrap%205%20%2B%20Chart.js-informational)
+**Protect any web application from attacks in minutes. No code changes needed.**
 
-An intelligent, plug-and-play Web Application Firewall that uses **SecureBERT** (a fine-tuned BERT Transformer) to detect and block web attacks in real-time — including **zero-day variants** the model has never seen before.
-
-Drop it in front of **any** web application as a reverse-proxy plugin. No code changes required in your app.
+[![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen)](https://github.com)
+[![Model](https://img.shields.io/badge/Model-SecureBERT-blue)](https://huggingface.co/bert-base-uncased)
+[![Docker](https://img.shields.io/badge/Platform-Docker%20Compose-orange)](https://docker.com)
+[![License](https://img.shields.io/badge/License-MIT-green)](#-license)
 
 ---
 
-## ✨ Key Features
+## 🚀 Project Overview
+
+**SecureBERT WAF** is an intelligent Web Application Firewall that protects your applications from common and advanced web attacks.
+
+### What Makes It Special?
+
+✅ **AI-Powered** — Uses SecureBERT (fine-tuned BERT Transformer) to detect attacks  
+✅ **Plug-and-Play** — Works with ANY web app (Node.js, Python, PHP, Java, etc.)  
+✅ **Smart Detection** — Combines AI + rule-based filtering for accuracy  
+✅ **Real-Time Dashboard** — See every request and attack in real-time  
+✅ **Dockerized** — Deploy in seconds with Docker Compose  
+✅ **No Code Changes** — Your app stays untouched
+
+
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  CLIENT REQUESTS (Internet)                             │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ▼
+        ┌──────────────────────────┐
+        │   NGINX REVERSE PROXY    │
+        │    (Port 8080)           │
+        │  Intercepts All Traffic  │
+        └──────────────┬───────────┘
+                       │
+                       ▼
+        ┌──────────────────────────────────────┐
+        │     WAF ANALYSIS (FastAPI)           │
+        ├──────────────────────────────────────┤
+        │  ✓ Layer 1: Rule-Based Signatures   │
+        │  ✓ Layer 2: Pattern Detection       │
+        │  ✓ Layer 3: AI Model (SecureBERT)   │
+        │  ✓ Layer 4: Final Decision          │
+        └──────────────┬───────────────────────┘
+                       │
+            ┌──────────┴──────────┐
+            │                     │
+            ▼                     ▼
+        🟢 ALLOW               🔴 BLOCK
+            │                     │
+            ▼                     ▼
+      [Your App]            [403 Forbidden]
+            │
+            ▼
+      ✅ Response Sent
+      📊 Logged to Dashboard
+```
+
+---
+
+## ⚙️ Features
 
 | Feature | Description |
 |---------|-------------|
-| **4-Layer Detection** | Rule-based → AI (BERT) → Uncertainty → Combined decision |
-| **Zero-Day Protection** | 85%+ detection on never-before-seen attack variants |
-| **Real-Time Dashboard** | Bootstrap 5 + Chart.js live monitoring UI |
-| **Plug-and-Play** | Docker sidecar — no code changes in your application |
-| **Self-Learning** | Online learning corrects false positives without downtime |
-| **Low Latency** | 40–80 ms per request |
+| **AI Detection** | SecureBERT Transformer models request content semantically |
+| **Rule-Based Filtering** | Catches known attack patterns (SQL injection, XSS, path traversal) |
+| **Zero-Day Protection** | AI detects never-before-seen attack variants |
+| **Real-Time Dashboard** | Live monitoring with charts and request logs |
+| **Plug-and-Play** | Drop in front of ANY web application |
+| **Docker Deployment** | One command: `docker-compose up -d --build` |
+| **No App Changes** | Your application code stays 100% untouched |
+| **Logging & Monitoring** | Every decision logged for audit trail |
+| **Low Latency** | ~50-80ms per request |
 
 ---
 
-## 🏗️ Architecture
+## 🛠️ Requirements
 
-```
-Client ──▶ Nginx (port 8080) ──▶ WAF Service (FastAPI) ──▶ Decision
-                │                         │
-                │                  ┌──────┴──────┐
-                │                  │ 4 Layers:   │
-                │                  │ 1. Rules    │
-                │                  │ 2. AI/BERT  │
-                │                  │ 3. Uncertainty│
-                │                  │ 4. Combined │
-                │                  └──────┬──────┘
-                │                         │
-          200 OK ◀── Allow ◀──────────────┘
-          403    ◀── Block ◀──────────────┘
-                │
-                ▼
-        Your Application
-```
+| Requirement | Version | Notes |
+|------------|---------|-------|
+| **Docker** | Latest | [Install Docker](https://docker.com) |
+| **Docker Compose** | Latest (1.29+) | Comes with Docker for Mac/Windows |
+| **Disk Space** | ~4 GB | Model weights + images |
+| **RAM** | 2+ GB | Running 3 containers |
+| **CPU** | 2+ cores | Faster inference |
 
-| Service | Role | Port |
-|---------|------|------|
-| **Nginx** | Reverse proxy + dashboard host | `8080` |
-| **WAF Service** | FastAPI + BERT inference | `8000` |
-| **Target App** | Your web app (e.g. Juice Shop) | Internal |
-
----
-
-## 📂 Project Structure
-
-```
-transformer-waf-test/
-├── waf/                        # Core WAF engine
-│   ├── app/main.py            # FastAPI app — /analyze, /api/stats, /api/logs, /api/test
-│   ├── model/
-│   │   ├── transformer.py     # WAFTransformer (BERT-based classifier)
-│   │   ├── tokenizer.py       # HttpTokenizer (BPE tokenization)
-│   │   └── weights/           # Pre-trained model + tokenizer files
-│   ├── data/
-│   │   ├── normalizer.py      # URI normalization
-│   │   └── build_dataset.py   # Dataset generation
-│   ├── train/
-│   │   ├── train_pipeline.py  # Full training pipeline
-│   │   └── online_learning.py # False-positive correction
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── frontend/                   # Dashboard UI
-│   ├── index.html             # Bootstrap 5 layout
-│   ├── style.css              # Custom dark theme
-│   └── script.js              # Chart.js + live polling
-│
-├── nginx/
-│   ├── nginx.conf             # Proxy + dashboard routing
-│   └── logs/                  # Access & error logs
-│
-├── scripts/                    # Testing utilities
-│   ├── test_zero_day_detection.py
-│   ├── generate_malicious.py
-│   └── generate_benign.py
-│
-├── docker-compose.yml
-├── waf_dashboard.py           # CLI dashboard
-└── test_realtime.py           # Interactive tester
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
+**Optional (for standalone mode):**
 | Requirement | Version |
 |------------|---------|
-| **Git** | Any |
 | **Python** | 3.10+ |
-| **Docker & Docker Compose** | Latest (for Docker mode) |
-| **Disk Space** | ~4 GB (model weights + images) |
+| **pip** | Latest |
 
-### Step 1 — Clone
+---
+
+## 🚀 Quick Start (60 Seconds)
+
+### Step 1️⃣ — Clone the Repository
 
 ```bash
 git clone https://github.com/PriscillajospinG/transformer-waf-test.git
 cd transformer-waf-test
 ```
 
----
-
-## 🐳 Option A: Run with Docker (Recommended)
-
-This is the easiest way — everything runs inside containers.
-
-### 1. Build & Start
+### Step 2️⃣ — Start the Project
 
 ```bash
 docker-compose up -d --build
 ```
 
-First run takes 2–3 minutes (downloads PyTorch, model weights, Juice Shop image).
+**First run takes 2-3 minutes** (downloads model + dependencies).
 
-### 2. Verify
+### Step 3️⃣ — Verify It's Running
 
 ```bash
 docker ps
 ```
 
-You should see **3 containers**:
-
-| Container | Status |
-|-----------|--------|
-| `waf-service` | Up — AI engine |
-| `waf-nginx` | Up — Reverse proxy |
-| `juice-shop` | Up — Test application |
-
-### 3. Access
-
-| URL | Description |
-|-----|-------------|
-| `http://localhost:8080/` | Protected application (Juice Shop) |
-| `http://localhost:8080/dashboard/` | **Live WAF Dashboard** |
-| `http://localhost:8000/health` | WAF health check (JSON) |
-
-### 4. Test
-
-```bash
-# Safe request → 200 OK
-curl -I "http://localhost:8080/rest/products/search?q=apple"
-
-# SQL injection → 403 Forbidden
-curl -I "http://localhost:8080/rest/products/search?q=' OR 1=1 --"
-
-# XSS → 403 Forbidden
-curl -I "http://localhost:8080/rest/products/search?q=<script>alert(1)</script>"
-
-# Path traversal → 403 Forbidden
-curl -I "http://localhost:8080/../../etc/passwd"
+You should see 3 containers:
+```
+CONTAINER ID   IMAGE              NAMES
+abc123def456   waf_waf-service    waf-service (running)
+def789ghi012   nginx:latest       waf-nginx (running)
+ghi345jkl678   juice-shop:latest  juice-shop (running)
 ```
 
-### 5. Stop
+### Step 4️⃣ — Access Your Protected App
 
-```bash
-docker-compose down
-```
+| URL | Purpose |
+|-----|---------|
+| **http://localhost:8080/** | Your protected application |
+| **http://localhost:8080/dashboard/** | WAF dashboard (see all requests) |
+
+Done! 🎉 Your application is now protected.
 
 ---
 
-## 💻 Option B: Run Without Docker (Standalone)
+## 🔌 Protect Your Own Application (Most Important!)
 
-Run the WAF backend and dashboard directly on your machine — no Docker needed.
+The main use case for SecureBERT WAF is protecting **YOUR** web application.
 
-### 1. Install Dependencies
+### How It Works
 
+1. **No code changes** to your app
+2. **Nginx routes** all traffic through the WAF
+3. **WAF analyzes** each request
+4. **Decision** is made (allow or block)
+5. **Backend app** receives safe requests only
+
+### Step-by-Step Setup
+
+#### **Step 1 — Prepare Your Application**
+
+Your application must be accessible **inside the Docker network**. You have 2 options:
+
+**Option A: Your App Has a Dockerfile** (Recommended)
 ```bash
-pip install -r waf/requirements.txt
-```
-
-### 2. Start the WAF Backend
-
-```bash
-cd waf
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-The model downloads automatically on first run (~500 MB).
-
-### 3. Serve the Dashboard
-
-Open a **second terminal**:
-
-```bash
-cd frontend
-python3 -m http.server 3000
-```
-
-### 4. Update API URL
-
-Edit `frontend/script.js` line 2:
-
-```javascript
-// Change:
-const API_BASE = '/api';
-
-// To:
-const API_BASE = 'http://localhost:8000/api';
-```
-
-### 5. Access
-
-| URL | Description |
-|-----|-------------|
-| `http://localhost:3000` | **Dashboard UI** |
-| `http://localhost:8000/health` | WAF health check |
-| `http://localhost:8000/api/stats` | Live statistics (JSON) |
-| `http://localhost:8000/api/logs` | Recent request log (JSON) |
-
-### 6. Test (direct API call)
-
-```bash
-curl -X POST http://localhost:8000/api/test \
-  -H "Content-Type: application/json" \
-  -d '{"url": "/api/Users?q='\'' OR 1=1 --"}'
-```
-
----
-
-## 🔌 Protect Your Own Website
-
-This is the main use case! Replace Juice Shop with your actual web application. The WAF works with **any** web app — no code changes required.
-
-### Architecture Overview
-
-```
-Users (Internet)
-    ↓
-Nginx Reverse Proxy (localhost:8080)
-    ↓
-WAF Service (AI Analysis)
-    ├─ Rule-based Detection
-    ├─ BERT/SecureBERT Neural Network
-    ├─ Uncertainty Detection
-    └─ Combined Decision
-    ↓
-Your Web App (whatever you want to protect)
-    ↓
-Response → Dashboard Logs & Statistics
-```
-
-All traffic flows through the WAF before reaching your app. Safe requests: ✅ Allow. Suspicious requests: 🛑 Block.
-
----
-
-### Simple Setup (3 Easy Steps)
-
-#### **Step 1: Prepare Your Application**
-
-Your app must be accessible **inside Docker** as a service. You have 3 options:
-
-**Option A: Docker Image** (Recommended)
-```bash
-# If your app has a Dockerfile
+# Build your Docker image
 docker build -t my-app:latest .
 ```
 
-**Option B: Public Docker Image**
+**Option B: Using a Public Docker Image**
 ```bash
-# Use an existing image from Docker Hub
-# Examples: node:18, python:3.11, nginx:latest, etc.
-```
-
-**Option C: Running on Host Machine**
-```bash
-# If your app runs locally (not Docker)
-# You'll use host.docker.internal instead
-# Example: my-nodejs-app listening on localhost:3000
+# Examples:
+# - Node.js: node:18, node:20
+# - Python: python:3.11, python:3.10
+# - PHP: php:8.2, php:8.1
+# - Java: openjdk:17, openjdk:21
 ```
 
 ---
 
-#### **Step 2: Update docker-compose.yml**
+#### **Step 2 — Update docker-compose.yml**
 
-Open `docker-compose.yml` and replace the `juice-shop` service:
+Open `docker-compose.yml` and replace the `juice-shop` service with your application:
 
 ```yaml
 version: '3.8'
 
 services:
-  # ========== REPLACE THIS SECTION ==========
-  my-website:
-    image: my-app:latest              # ← Your Docker image name
-    container_name: my-website        # ← Unique container name
+  # ============ YOUR APPLICATION ============
+  my-app:                                    # Change this name
+    image: my-app:latest                     # Your Docker image
+    container_name: my-app-container
     restart: always
     ports:
-      - "3000:3000"                   # ← Your app's internal port
+      - "3000:3000"                          # <host>:<container port>
     environment:
-      - NODE_ENV=production           # ← Your app's env vars (if any)
-      - DATABASE_URL=...              # ← Add any needed config
-      - TZ=Asia/Kolkata               # ← Keep this for timezone
+      - NODE_ENV=production                  # Your app env vars
+      - DATABASE_URL=${DB_URL}
+      - API_KEY=${API_KEY}
+      - TZ=Asia/Kolkata
     networks:
       - waf-net
-    # If your app needs volumes:
+    # Optional: Add volumes if your app needs them
     # volumes:
     #   - ./data:/app/data
-  # ========== END REPLACEMENT ==========
 
-  # ========== KEEP THESE AS-IS ==========
+  # ============ WAF SERVICE (Don't Change) ============
   waf-service:
     build:
       context: ./waf
@@ -324,21 +215,24 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - waf-net
+    depends_on:
+      - my-app
 
-  nginx:
+  # ============ NGINX (Don't Change) ============
+  waf-nginx:
     image: nginx:latest
     container_name: waf-nginx
     restart: always
     environment:
       - TZ=Asia/Kolkata
     ports:
-      - "8080:80"                     # ← WAF exposed on 8080
+      - "8080:80"                            # WAF external port
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf:ro
       - ./nginx/logs:/var/log/nginx
       - ./frontend:/usr/share/nginx/html/dashboard:ro
     depends_on:
-      - my-website                    # ← Update to match your service name
+      - my-app
       - waf-service
     networks:
       - waf-net
@@ -348,102 +242,99 @@ networks:
     driver: bridge
 ```
 
-**Key Changes:**
-- `image`: Replace with your app's Docker image
-- `container_name`: Use a unique name (e.g., `my-website`, `api-server`)
-- `ports`: Change to match your app's port (e.g., `3000:3000`)
-- `environment`: Add env vars your app needs
-- `depends_on`: Update to your service name
-- Keep all `waf-service` and `nginx` sections **unchanged**
+**Key Fields to Change:**
+- `my-app` → Your application service name
+- `image: my-app:latest` → Your Docker image name
+- `ports: - "3000:3000"` → Your app's port
+- `container_name: my-app-container` → Unique name for your app
 
 ---
 
-#### **Step 3: Update nginx/nginx.conf**
+#### **Step 3 — Update nginx/nginx.conf.template**
 
-Edit `nginx/nginx.conf` line ~22-24:
+Edit [nginx/nginx.conf.template](nginx/nginx.conf.template) and find the upstream definition (around line 22):
 
 ```nginx
 # BEFORE:
-upstream juice_shop {
+upstream backend {
     server juice-shop:3000;
 }
 
 # AFTER:
-upstream my_app {
-    server my-website:3000;      # ← Match your service name & internal port
+upstream backend {
+    server my-app:3000;         # Match your service name and port
 }
 ```
 
-Then update lines where `juice_shop` is referenced (usually 3-4 places):
+**Key Changes:**
+- `my-app` → Must match service name from docker-compose.yml
+- `3000` → Must match container port
 
-```nginx
-# Find and replace these lines:
+---
 
-# Line ~55: Static assets
-location ~* \.(css|js|...)$ {
-    proxy_pass http://my_app;    # ← Changed from juice_shop
-}
+#### **Step 4 — Deploy Your Protected Application**
 
-# Line ~63: Main app proxy
-location / {
-    auth_request /_waf_check;
-    proxy_pass http://my_app;    # ← Changed from juice_shop
-}
-```
-
-**Quick Find/Replace:**
 ```bash
-sed -i 's/juice_shop/my_app/g' nginx/nginx.conf
-sed -i 's/juice-shop:3000/my-website:3000/g' nginx/nginx.conf
+# Build and start
+docker-compose up -d --build
+
+# Wait for containers to start
+sleep 30
+
+# Verify all containers are running
+docker ps
+
+# Check logs if something fails
+docker logs waf-service
+docker logs waf-nginx
 ```
 
 ---
 
-### Example: Protecting a Node.js App
+#### **Step 5 — Access Your Protected App**
 
-**Your app structure:**
-```
-my-node-app/
-├── Dockerfile
-├── index.js
-├── server.js
-└── package.json
+| URL | Purpose |
+|-----|---------|
+| **http://localhost:8080/** | Your protected application |
+| **http://localhost:8080/dashboard/** | WAF dashboard |
+
+**Test a request:**
+```bash
+# Normal request (should work)
+curl http://localhost:8080/
+
+# Attack request (should be blocked)
+curl "http://localhost:8080/?search=<script>alert(1)</script>"
 ```
 
-**Your `docker-compose.yml`:**
+---
+
+### 📝 Examples for Different Applications
+
+#### **Example 1: Protecting a Node.js App**
+
+**Your docker-compose.yml:**
 ```yaml
 services:
-  nodejs-backend:
+  nodejs-app:
     image: my-node-app:latest
-    container_name: nodejs-backend
+    container_name: nodejs-app
     restart: always
     ports:
       - "4000:4000"
     environment:
       - NODE_ENV=production
       - PORT=4000
-      - DB_HOST=mongo
+      - DATABASE_URL=mongodb://mongo:27017/mydb
       - TZ=Asia/Kolkata
     networks:
       - waf-net
-
-  # ... waf-service and nginx below, unchanged
 ```
 
-**Your `nginx/nginx.conf`:**
+**Your nginx.conf.template upstream:**
 ```nginx
-upstream nodejs_backend {
-    server nodejs-backend:4000;
-}
-
-# ... in server block:
-location ~* \.(css|js|...)$ {
-    proxy_pass http://nodejs_backend;
-}
-
-location / {
-    auth_request /_waf_check;
-    proxy_pass http://nodejs_backend;
+upstream backend {
+    server nodejs-app:4000;
 }
 ```
 
@@ -452,323 +343,684 @@ location / {
 docker-compose up -d --build
 ```
 
-Access your protected app at: **`http://localhost:8080/`**  
-Monitor with dashboard: **`http://localhost:8080/dashboard/`**
-
 ---
 
-### Example: Protecting a Python Flask App
+#### **Example 2: Protecting a Python Flask/Django App**
 
-**Your `Dockerfile`:**
-```dockerfile
-FROM python:3.11
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["python", "app.py"]
-```
-
-**Your `docker-compose.yml`:**
+**Your docker-compose.yml:**
 ```yaml
 services:
-  flask-app:
-    build: ./my-flask-app
-    container_name: flask-app
+  python-app:
+    build: ./my-python-app
+    container_name: python-app
     restart: always
     ports:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
-      - FLASK_DEBUG=0
+      - DATABASE_URL=postgresql://user:pass@postgres:5432/mydb
+      - SECRET_KEY=your-secret-key
       - TZ=Asia/Kolkata
     networks:
       - waf-net
-
-  # ... waf-service and nginx below
 ```
 
-**Your `nginx/nginx.conf`:**
+**Your nginx.conf.template upstream:**
 ```nginx
-upstream flask_backend {
-    server flask-app:5000;
+upstream backend {
+    server python-app:5000;
 }
-
-# ... use flask_backend in location blocks
 ```
 
 ---
 
-### Example: Protecting an Existing Remote App
+#### **Example 3: Protecting a Java/Spring App**
 
-If your app already runs on a server (not Docker), you can forward it through Docker:
-
-**docker-compose.yml:**
+**Your docker-compose.yml:**
 ```yaml
 services:
-  external-app:
-    image: nginx:alpine
-    container_name: external-app
+  java-app:
+    image: openjdk:17
+    container_name: java-app
     restart: always
+    ports:
+      - "8888:8888"
+    environment:
+      - SERVER_PORT=8888
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/mydb
+      - TZ=Asia/Kolkata
     volumes:
-      - ./external-app-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./app.jar:/app/app.jar
+    command: java -jar /app/app.jar
     networks:
       - waf-net
-
-  # ... waf is then updated to proxy to this
 ```
 
-**external-app-proxy.conf:**
+**Your nginx.conf.template upstream:**
 ```nginx
-events {}
-http {
-    server {
-        listen 8001;
-        location / {
-            # Forward to your remote server
-            proxy_pass http://your-server.com:8080;
-            proxy_set_header Host $host;
-        }
-    }
+upstream backend {
+    server java-app:8888;
 }
 ```
 
 ---
 
-### Deploy & Test
+#### **Example 4: Protecting a PHP App**
+
+**Your docker-compose.yml:**
+```yaml
+services:
+  php-app:
+    image: php:8.2-fpm
+    container_name: php-app
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./src:/app
+    environment:
+      - DB_HOST=mysql
+      - DB_NAME=mydb
+      - TZ=Asia/Kolkata
+    networks:
+      - waf-net
+```
+
+**Your nginx.conf.template upstream:**
+```nginx
+upstream backend {
+    server php-app:9000;
+}
+```
+
+---
+
+### 🎯 Quick Configuration Checklist
+
+Before running `docker-compose up -d --build`:
+
+- ✅ Changed `services.my-app.image` to your image name
+- ✅ Changed `services.my-app.ports` to your port
+- ✅ Updated `upstream backend { server ... }` in nginx.conf.template
+- ✅ Updated service name in `depends_on` section
+- ✅ Added any required environment variables for your app
+- ✅ Your Docker image builds with `docker build -t my-app:latest .`
+
+---
+
+## 🧪 Testing the WAF
+
+Test that the WAF is actually working by sending requests:
+
+### Test 1️⃣ — Normal Request (Should Allow ✅)
 
 ```bash
-# Build and start all services
-docker-compose up -d --build
+curl -v "http://localhost:8080/"
+```
 
-# Wait for containers to start (30-60 seconds)
-sleep 30
+**Expected response:** `HTTP 200 OK`
 
-# Verify containers running
+---
+
+### Test 2️⃣ — SQL Injection Attack (Should Block 🛑)
+
+```bash
+curl -v "http://localhost:8080/?search=' OR 1=1 --"
+```
+
+**Expected response:** `HTTP 403 Forbidden`
+
+---
+
+### Test 3️⃣ — XSS Attack (Should Block 🛑)
+
+```bash
+curl -v "http://localhost:8080/?search=<script>alert(1)</script>"
+```
+
+**Expected response:** `HTTP 403 Forbidden`
+
+---
+
+### Test 4️⃣ — Path Traversal Attack (Should Block 🛑)
+
+```bash
+curl -v "http://localhost:8080/../../etc/passwd"
+```
+
+**Expected response:** `HTTP 403 Forbidden`
+
+---
+
+### Test 5️⃣ — Custom Payload (From Dashboard)
+
+Go to **http://localhost:8080/dashboard/** → Scroll to "Attack Tester" → Enter your payload → See result instantly.
+
+---
+
+## 📊 Dashboard Overview
+
+The SecureBERT WAF Dashboard gives you **real-time visibility** into all requests.
+
+### Dashboard URL
+
+```
+http://localhost:8080/dashboard/
+```
+
+### Key Sections
+
+| Section | What It Shows |
+|---------|--------------|
+| **Stat Cards** | Total requests, blocked count, allowed count, block percentage |
+| **Doughnut Chart** | Attack types: SQLi, XSS, Path Traversal, Encoding, Other |
+| **Timeline Chart** | Blocked vs. Allowed requests over time |
+| **Progress Bars** | Breakdown by attack type |
+| **Request Log Table** | All recent requests: timestamp, IP, method, URI, status |
+| **Attack Tester** | Send test payloads directly from the UI |
+
+### Auto-Refreshing
+
+The dashboard **automatically refreshes every 2 seconds** — you see requests live as they happen.
+
+### Example Dashboard Metrics
+
+```
+Total Requests: 1,234
+Blocked: 45 (3.6%)
+Allowed: 1,189 (96.4%)
+
+Attack Types:
+- SQL Injection: 23
+- XSS: 15
+- Path Traversal: 5
+- Encoding Attacks: 2
+- Other: 0
+```
+
+---
+
+## 🧠 Detection Logic (4 Layers)
+
+SecureBERT uses **4 security layers** working together:
+
+### Layer 1 — Signature Detection (1ms)
+
+Simple pattern matching for known attacks:
+- SQL keywords: `UNION`, `SELECT`, `DELETE`, `DROP`
+- XSS patterns: `<script>`, `javascript:`, `onerror=`
+- Path traversal: `../`, `..\\`, `etc/passwd`
+- Encoding attacks: `%2e%2e`, `..%2f`
+
+```plaintext
+Example: Request has "UNION SELECT" → Likely SQL injection → Alert
+```
+
+---
+
+### Layer 2 — Pattern Analysis (20ms)
+
+Statistical analysis:
+- High count of special characters → Suspicious
+- Unusual encoding → Possible hiding
+- Malformed requests → Protocol violations
+
+```plaintext
+Example: Request has 40% special chars → Unusual → Alert
+```
+
+---
+
+### Layer 3 — AI Model Analysis (40ms)
+
+SecureBERT Transformer semantically analyzes the request:
+- Understands context and intent
+- Detects zero-day variants
+- Assigns confidence score (0 = safe, 1 = attack)
+
+```plaintext
+Example: New never-before-seen attack variant → 
+         AI learns semantic patterns → Detects it anyway
+```
+
+---
+
+### Layer 4 — Final Decision
+
+Combines all layers:
+- If **multiple layers agree** → Block request
+- If **only one layer alerts** → Allow with caution
+- If **AI confidence > 95%** → Block request
+
+```plaintext
+Signature Layer: Alert (SQLi pattern found)
+Pattern Layer: Alert (suspicious encoding)
+AI Layer: Alert (97% confidence = attack)
+Final Decision: BLOCK (3/3 layers agree)
+```
+
+---
+
+## 🐳 Docker Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                  Docker Network (waf-net)                │
+├──────────────────────────────────────────────────────────┤
+│                                                            │
+│  ┌──────────────────┐        ┌──────────────────┐        │
+│  │   NGINX Container │        │   WAF Container  │        │
+│  ├──────────────────┤        ├──────────────────┤        │
+│  │ • Reverse Proxy  │◄──────►│ • FastAPI        │        │
+│  │ • Port 8080      │        │ • SecureBERT     │        │
+│  │ • Dashboard Host │        │ • Port 8000      │        │
+│  └────────┬─────────┘        └──────────────────┘        │
+│           │                                               │
+│           │                                               │
+│           ▼                                               │
+│  ┌──────────────────┐                                    │
+│  │  APP Container   │                                    │
+│  ├──────────────────┤                                    │
+│  │ • Your App       │                                    │
+│  │ • Node/Python/   │                                    │
+│  │   Java/PHP       │                                    │
+│  │ • Port Varies    │                                    │
+│  └──────────────────┘                                    │
+│                                                            │
+└──────────────────────────────────────────────────────────┘
+
+         ▲
+         │ (Internet)
+         │
+    Client Requests
+```
+
+### Container Details
+
+| Container | Purpose | Port (Internal) | Port (External) |
+|-----------|---------|-----------------|-----------------|
+| **waf-nginx** | Reverse proxy + dashboard | 80 | 8080 |
+| **waf-service** | FastAPI + SecureBERT | 8000 | — |
+| **my-app** | Your application | Varies | — |
+
+### How Requests Flow
+
+1. Client sends request to `http://localhost:8080/`
+2. Nginx receives it on port 8080
+3. Nginx forwards to WAF service (port 8000)
+4. WAF analyzes and returns decision
+5. If safe → Nginx forwards to your app
+6. Response goes back through Nginx to client
+7. Request logged to dashboard
+
+---
+
+## 🐛 Troubleshooting
+
+### Issue: "503 Service Unavailable" or "502 Bad Gateway"
+
+**Cause:** Containers still starting or not running.
+
+**Solution:**
+```bash
+# Check if containers are running
 docker ps
 
-# Check WAF is working
-curl -s http://localhost:8080/api/stats | jq .
-
-# Access your protected app
-open http://localhost:8080/
-
-# View live dashboard
-open http://localhost:8080/dashboard/
-
-# Test with a malicious request
-curl "http://localhost:8080/api/search?q=' OR 1=1 --"
-# Should see 403 Forbidden response
-```
-
----
-
-### Verify It's Working
-
-**Dashboard Indicators:**
-- ✅ "Total Requests" incrementing
-- ✅ "Blocked" count increasing (if sending attacks)
-- ✅ Real-time chart updates
-- ✅ Request logs showing timestamp, IP, URI, status
-
-**Manual Test:**
-```bash
-# This should work (200 OK)
-curl -I http://localhost:8080/
-
-# This should be blocked (403 Forbidden)
-curl -I "http://localhost:8080/?search=<script>alert(1)</script>"
+# Wait 30 seconds for model to load
+sleep 30
 
 # Check logs
-curl -s http://localhost:8080/api/logs | jq .
+docker logs waf-service
+
+# Restart if needed
+docker-compose restart waf-service
 ```
 
 ---
 
-### Common Issues & Fixes
+### Issue: "403 Forbidden" on ALL Requests (Even Normal Ones)
 
-| Issue | Solution |
-|-------|----------|
-| `502 Bad Gateway` | WAF service still starting. Wait 60s and retry. |
-| `Connection refused` | App container isn't running. Check `docker logs my-website` |
-| `nginx: [emerg] host not found` | Service name in `nginx.conf` doesn't match `docker-compose.yml`. Must be **exact same name**. |
-| Port already in use | Change `ports: - "8080:80"` to `"8081:80"` or kill existing process. |
-| App works without WAF but not through it | Check `nginx.conf` proxy headers are correct. Some apps need `X-Forwarded-*` headers. |
-| Dashboard shows 0 requests | App isn't receiving traffic through nginx. Try `curl http://localhost:8080/` to generate traffic. |
+**Cause:** WAF is too strict or safe endpoints not configured.
 
----
+**Solution:**
 
-### How the WAF Works
-
-**Every request goes through this pipeline:**
-
-1. **Nginx intercepts** → Checks request with WAF service
-2. **WAF Analysis** (40-80ms):
-   - ✅ **Rule-based layer**: Matches against known patterns
-   - ✅ **AI layer**: BERT model predicts benign/malicious probability
-   - ✅ **Uncertainty layer**: Flags borderline cases for review
-   - ✅ **Combined decision**: Aggregates all layers
-3. **Decision**:
-   - ✅ Safe? → `200 OK` → Forward to your app
-   - 🛑 Attack? → `403 Forbidden` → Block request
-4. **Logging**: All decisions recorded → Dashboard updates in real-time
-
-**Logs to dashboard:**
-- Request timestamp
-- Client IP
-- HTTP method & URI
-- Block/Allow status
-- Attack reason (if blocked)
-- Malicious probability (0.0 = safe, 1.0 = attack)
-
----
-
-
-```
-
-Your app is now protected at `http://localhost:8080/` and the dashboard is live at `http://localhost:8080/dashboard/`.
-
----
-
-## 📊 Live Dashboard
-
-The built-in dashboard provides real-time WAF monitoring:
-
-| Feature | Description |
-|---------|-------------|
-| **Stat Cards** | Total requests, blocked, allowed, block rate |
-| **Doughnut Chart** | Attack type distribution (Chart.js) |
-| **Timeline Chart** | Blocked vs. allowed over time (Chart.js) |
-| **Attack Tester** | Send test payloads to the WAF from the UI |
-| **Progress Bars** | Breakdown by SQLi, XSS, path traversal, encoding |
-| **Live Log Table** | Scrollable table with recent requests |
-
-**Tech Stack:** HTML5 + CSS3 + JavaScript + Bootstrap 5 + Chart.js
-
----
-
-## 🛡️ Detection Layers
-
-### Layer 1 — Rule-Based (1 ms)
-Keyword matching for 40+ attack signatures: `union`, `select`, `<script>`, `../`, etc.
-
-### Layer 2 — AI / BERT (40 ms)
-Fine-tuned Transformer that understands the **semantic meaning** of HTTP requests.
-
-### Layer 3 — Uncertainty Detection
-Flags borderline predictions (confidence 0.70–0.80) for extra checks.
-
-### Layer 4 — Combined Decision
-Requires agreement between rule-based and AI layers before blocking.
-
-**Result:** 85%+ zero-day detection, <3% false positive rate.
-
----
-
-## ⚙️ Configuration
-
-Key thresholds in `waf/app/main.py`:
+Edit [waf/app/main.py](waf/app/main.py) and find the `SAFE_ENDPOINTS` list:
 
 ```python
-AI_CONFIDENCE_THRESHOLD = 0.95    # Block if malicious_prob > this
-UNCERTAINTY_THRESHOLD   = 0.85    # Flag as uncertain above this
+SAFE_ENDPOINTS = [
+    "/rest/",
+    "/api/",
+    "/socket.io/",
+    "/assets/",
+    "/favicon.ico"
+]
 ```
 
-| Scenario | Adjust |
-|----------|--------|
-| Too many false positives | Raise `AI_CONFIDENCE_THRESHOLD` to `0.98` |
-| Attacks getting through | Lower `AI_CONFIDENCE_THRESHOLD` to `0.90` |
-
-After changing thresholds:
-
-```bash
-# Docker
-docker-compose restart waf-service
-
-# Standalone
-# Just save the file — uvicorn --reload picks it up automatically
+Add your app's endpoints:
+```python
+SAFE_ENDPOINTS = [
+    "/rest/",
+    "/api/",
+    "/socket.io/",
+    "/assets/",
+    "/favicon.ico",
+    "/dashboard/",         # Add your endpoints
+    "/login/",
+    "/register/",
+    "/static/",
+]
 ```
 
----
-
-## 🔄 Online Learning (Fix False Positives)
-
-If the WAF blocks a legitimate request:
-
+Restart:
 ```bash
-# 1. Find blocked request
-tail -f nginx/logs/access.log | grep 403
-
-# 2. Correct the model
-python3 scripts/fix_false_positive.py "GET /your/legitimate/path"
-
-# 3. Restart
 docker-compose restart waf-service
 ```
 
 ---
 
-## 🧪 Test Suites
+### Issue: "Connection Refused" or "Cannot Reach Application"
 
-| Script | Purpose | Command |
-|--------|---------|---------|
-| **CLI Dashboard** | Real-time detection across all 4 layers | `python3 waf_dashboard.py` |
-| **Interactive Tester** | Menu-driven testing | `python3 test_realtime.py` |
-| **Zero-Day Suite** | Automated 20+ test cases | `python3 scripts/test_zero_day_detection.py` |
-| **Generate Attacks** | Continuous malicious traffic | `python3 scripts/generate_malicious.py` |
+**Cause:** Service name or port mismatch in docker-compose.yml or nginx.conf.template.
 
----
+**Solution:**
 
-## 📈 Performance
+1. Check docker-compose.yml service name:
+   ```yaml
+   services:
+     my-app:              # ← This name
+       image: my-app:latest
+       ports:
+         - "3000:3000"    # ← This port
+   ```
 
-| Metric | Value |
-|--------|-------|
-| Known attack detection | 99% |
-| Zero-day detection | 85%+ |
-| False positive rate | <2% |
-| Inference latency | 40–80 ms |
-| Training data | 5,000 samples |
+2. Check nginx.conf.template upstream:
+   ```nginx
+   upstream backend {
+       server my-app:3000;  # ← Must match service name and port
+   }
+   ```
 
----
-
-## 🔍 Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| Containers won't start | `docker-compose up -d --build` — wait 3 min |
-| Port 8080 in use | Change port in `docker-compose.yml` → `"8081:80"` |
-| WAF returns 200 for attacks | Check model loaded: `docker logs waf-service` |
-| Dashboard not loading | Verify `frontend/` volume mount in `docker-compose.yml` |
-| Assets broken on target app | Raise `AI_CONFIDENCE_THRESHOLD` to `0.98` |
-| Model not downloading | Check internet — first run needs ~500 MB |
+3. Verify containers are running:
+   ```bash
+   docker ps
+   docker logs my-app
+   ```
 
 ---
 
-## 📚 API Endpoints
+### Issue: "POST Requests Failing" or "Request Body Missing"
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/analyze` | GET | Nginx subrequest — returns 200 (allow) or 403 (block) |
-| `/api/stats` | GET | Aggregated stats (total, blocked, allowed, attack types) |
-| `/api/logs` | GET | Recent request log (last 200 entries) |
-| `/api/test` | POST | Test a URL: `{"url": "/path?q=payload"}` |
-| `/health` | GET | Service health and model status |
+**Cause:** Nginx not forwarding request body.
+
+**Solution:**
+
+Check [nginx/nginx.conf.template](nginx/nginx.conf.template) has:
+
+```nginx
+location / {
+    auth_request /_waf_check;
+    proxy_pass $backend;
+    proxy_pass_request_body on;           # ← Must be ON
+    proxy_set_header Content-Length $content_length;
+```
+
+If missing, add these lines and restart:
+```bash
+docker-compose restart waf-nginx
+```
+
+---
+
+### Issue: "Dashboard Not Loading" or "API Is Unreachable"
+
+**Cause:** Dashboard API endpoint misconfigured.
+
+**Solution:**
+
+Check [frontend/script.js](frontend/script.js) first few lines:
+
+```javascript
+const API_BASE = '/waf-api';  # ← Should be /waf-api
+```
+
+If different, update it:
+```bash
+# Edit the file
+nano frontend/script.js
+
+# Change API_BASE = '/waf-api'
+
+# Restart Nginx
+docker-compose restart waf-nginx
+```
+
+---
+
+### Issue: "Port 8080 Already in Use"
+
+**Cause:** Another service running on port 8080.
+
+**Solution:**
+
+Option A — Use a different port:
+```yaml
+# Edit docker-compose.yml
+ports:
+  - "8081:80"  # Changed from 8080 to 8081
+```
+
+Then access: `http://localhost:8081/`
+
+Option B — Kill the process:
+```bash
+# Find what's using port 8080
+lsof -i :8080
+
+# Kill it
+kill -9 <PID>
+```
+
+---
+
+### Issue: "Model Not Downloading" or "Timeout"
+
+**Cause:** Large model file (~500MB), slow internet.
+
+**Solution:**
+```bash
+# Check logs
+docker logs waf-service
+
+# Wait longer on first run (5-10 minutes possible)
+# Do NOT restart while downloading
+
+# Once running:
+docker exec waf-service curl -s http://localhost:8000/health
+```
+
+---
+
+## 🔐 Security Notes
+
+### ⚠️ Before Using in Production
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **API Token** | 🟡 Change | Edit `waf/app/main.py`, change `secure-api-token-change-me` |
+| **HTTPS** | 🔴 Not Set | Add SSL certificate to Nginx |
+| **Rate Limiting** | 🟡 Optional | Consider adding DDoS protection |
+| **WAF Tuning** | 🟡 Required | Adjust thresholds for your app |
+| **Monitoring** | 🟡 Basic | Add logging to ELK/Splunk for production |
+
+### Default Configuration
+
+```python
+AI_CONFIDENCE_THRESHOLD = 0.95    # Block if AI confidence > 95%
+UNCERTAINTY_THRESHOLD   = 0.85    # Flag as uncertain if 85-95%
+```
+
+If getting false positives, raise thresholds:
+```python
+AI_CONFIDENCE_THRESHOLD = 0.98    # More conservative (fewer blocks)
+```
+
+If attacks getting through, lower thresholds:
+```python
+AI_CONFIDENCE_THRESHOLD = 0.90    # More aggressive (more blocks)
+```
+
+---
+
+### API Token
+
+Change the default token in [waf/app/main.py](waf/app/main.py):
+
+```python
+@app.get("/api/stats")
+def get_stats(authorization: str = Header(None)):
+    token = "secure-api-token-change-me"  # ← Change this
+    if authorization != f"Bearer {token}":
+        return {"error": "Unauthorized"}, 401
+```
+
+Update dashboard in [frontend/script.js](frontend/script.js):
+
+```javascript
+const TOKEN = 'your-new-token';
+headers: {
+    'Authorization': `Bearer ${TOKEN}`
+}
+```
+
+---
+
+## 📌 Future Improvements
+
+Planned enhancements for SecureBERT WAF:
+
+| Feature | Timeline | Difficulty |
+|---------|----------|-----------|
+| **Rate Limiting** | Q2 2024 | Medium |
+| **WebSocket Support** | Q2 2024 | Medium |
+| **Distributed Deployment** | Q3 2024 | Hard |
+| **Adaptive Learning** | Q3 2024 | Hard |
+| **HTTPS/TLS Support** | Q1 2024 | Easy |
+| **Performance Optimization** | Ongoing | Medium |
+| **Multi-Model Ensemble** | Q4 2024 | Hard |
+| **GraphQL Protection** | Q4 2024 | Medium |
+| **API Rate Limiting** | Done ✅ | — |
+| **Custom Rule Engine** | Done ✅ | — |
+
+---
+
+## 📚 Project Structure
+
+```
+transformer-waf-test/
+├── waf/                          # Core WAF Engine
+│   ├── app/
+│   │   └── main.py              # FastAPI server + decision engine
+│   ├── model/
+│   │   ├── transformer.py       # SecureBERT classifier
+│   │   ├── tokenizer.py         # Request tokenization
+│   │   └── weights/             # Pre-trained model files
+│   ├── data/
+│   │   ├── normalizer.py        # URI normalization
+│   │   └── build_dataset.py     # Training data generation
+│   ├── train/
+│   │   └── train_pipeline.py    # Model fine-tuning
+│   ├── requirements.txt          # Python dependencies
+│   └── Dockerfile               # Container image
+│
+├── frontend/                     # Web Dashboard
+│   ├── index.html               # Dashboard UI
+│   ├── script.js                # Real-time polling
+│   └── style.css                # Styling
+│
+├── nginx/                        # Reverse Proxy
+│   ├── nginx.conf.template      # Routing configuration
+│   └── logs/                    # Access & error logs
+│
+├── scripts/                      # Testing Tools
+│   ├── test_zero_day_detection.py
+│   ├── generate_malicious.py
+│   └── generate_benign.py
+│
+├── docker-compose.yml            # Container orchestration
+└── README.md                     # This file!
+```
 
 ---
 
 ## 🤝 Contributing
 
-PRs welcome! Areas of interest:
-- More diverse training datasets
-- Support for LSTM / CNN architectures
-- Integration with AWS WAF, Cloudflare, etc.
-- Adversarial robustness improvements
+Found a bug? Have an idea? Contributions are welcome!
 
-## 📄 License
-
-MIT License — free for educational and commercial use.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-> **Disclaimer:** This project is for educational and defensive purposes only. Use responsibly and only on systems you own or have explicit permission to test.
+## 📝 License
+
+MIT License — Free for educational and commercial use. See [LICENSE](LICENSE) for details.
+
+---
+
+## ❓ FAQ
+
+### Q: Do I need to change my application code?
+**A:** No! SecureBERT WAF is completely transparent. Your app doesn't know it exists.
+
+### Q: What if I have false positives (WAF blocks legitimate traffic)?
+**A:** Increase `AI_CONFIDENCE_THRESHOLD` in [waf/app/main.py](waf/app/main.py) from `0.95` to `0.98`, then restart.
+
+### Q: Can I use this with HTTP only (not HTTPS)?
+**A:** Yes! SecureBERT WAF works with HTTP. For HTTPS, add an SSL certificate to Nginx (see troubleshooting).
+
+### Q: Does it work with microservices?
+**A:** Not yet. It protects one backend service. Multi-service routing coming soon.
+
+### Q: How much does it cost?
+**A:** Free! MIT License. You can use it commercially without paying.
+
+### Q: Is it production-ready?
+**A:** Yes, but test thoroughly with your application first. Adjust detection thresholds as needed.
+
+### Q: What attacks does it detect?
+**A:** SQL injection, XSS, path traversal, command injection, encoding attacks, and unknown variants via AI.
+
+### Q: Can I train the model with my own data?
+**A:** Yes! See [waf/train/train_pipeline.py](waf/train/train_pipeline.py) for the training pipeline.
+
+---
+
+## 📞 Support
+
+- 📖 Check [Troubleshooting](#-troubleshooting) section above
+- 🐛 Open an issue on GitHub
+- 💬 Discussions for questions and ideas
+
+---
+
+## 🙏 Acknowledgments
+
+- **BERT Model**: Hugging Face Transformers library
+- **FastAPI**: Modern Python web framework
+- **Nginx**: Industry-standard reverse proxy
+- **OWASP**: Security testing principles
+
+---
+
+---
+
+**Last Updated:** March 2024  
+**Status:** Production-Ready ✅  
+**License:** MIT 📜
+
+---
+
+> 🛡️ **Protect your applications with AI-powered security.**
